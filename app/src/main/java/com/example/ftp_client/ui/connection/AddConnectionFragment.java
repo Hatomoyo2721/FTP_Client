@@ -23,7 +23,9 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 public class AddConnectionFragment extends Fragment {
@@ -45,16 +47,10 @@ public class AddConnectionFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_add_connection, container, false);
 
-        initializeFirebase();
         initializeViews(view);
         setListeners();
 
         return view;
-    }
-
-    private void initializeFirebase() {
-        firebaseAuth = FirebaseAuth.getInstance();
-        databaseReference = FirebaseDatabase.getInstance().getReference("users");
     }
 
     private void initializeViews(View view) {
@@ -100,9 +96,9 @@ public class AddConnectionFragment extends Fragment {
         }
 
         ArrayList<ConnectionModel> connectionList = SharedPreferencesUtil.loadConnectionList(requireContext());
-        Set<String> usernamesForIp = getUsernamesForIp(connectionList, ipAddress);
+        Map<String, Set<String>> ipUsernameMap = getIpUsernameMap(connectionList);
 
-        if (!validateUsernamesForIp(usernamesForIp, username)) return;
+        if (!validateIpAndUsername(ipUsernameMap, ipAddress, username)) return;
 
         ConnectionModel connection = new ConnectionModel(ipAddress, _port, username, password);
 
@@ -135,25 +131,35 @@ public class AddConnectionFragment extends Fragment {
         return _port;
     }
 
-    private Set<String> getUsernamesForIp(ArrayList<ConnectionModel> connectionList, String ipAddress) {
-        Set<String> usernamesForIp = new HashSet<>();
+    private Map<String, Set<String>> getIpUsernameMap(ArrayList<ConnectionModel> connectionList) {
+        Map<String, Set<String>> ipUsernameMap = new HashMap<>();
         for (ConnectionModel connection : connectionList) {
-            if (connection.getIpAddress().equals(ipAddress)) {
-                usernamesForIp.add(connection.getUsername());
-            }
+            ipUsernameMap.computeIfAbsent(connection.getIpAddress(), k -> new HashSet<>()).add(connection.getUsername());
         }
-        return usernamesForIp;
+        return ipUsernameMap;
     }
 
-    private boolean validateUsernamesForIp(Set<String> usernamesForIp, String username) {
-        if (usernamesForIp.size() >= 2 && !usernamesForIp.contains(username)) {
-            Toast.makeText(getContext(), "This IP address already has two connections with different usernames.", Toast.LENGTH_SHORT).show();
+    private boolean validateIpAndUsername(Map<String, Set<String>> ipUsernameMap, String ipAddress, String username) {
+        if (ipUsernameMap.size() >= 10 && !ipUsernameMap.containsKey(ipAddress)) {
+            Toast.makeText(getContext(),
+                    "You can only add a maximum of 10 different IP addresses.", Toast.LENGTH_SHORT).show();
             return false;
         }
 
-        if (usernamesForIp.contains(username)) {
-            Toast.makeText(getContext(), "A connection with this IP address and username already exists.", Toast.LENGTH_SHORT).show();
-            return false;
+        Set<String> usernamesForIp = ipUsernameMap.get(ipAddress);
+
+        if (usernamesForIp != null) {
+            if (usernamesForIp.size() >= 2 && !usernamesForIp.contains(username)) {
+                Toast.makeText(getContext(),
+                        "This IP address already has two connections with different usernames.", Toast.LENGTH_SHORT).show();
+                return false;
+            }
+
+            if (usernamesForIp.contains(username)) {
+                Toast.makeText(getContext(),
+                        "A connection with this IP address and username already exists.", Toast.LENGTH_SHORT).show();
+                return false;
+            }
         }
 
         return true;

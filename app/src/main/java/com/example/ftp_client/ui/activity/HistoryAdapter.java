@@ -1,5 +1,6 @@
 package com.example.ftp_client.ui.activity;
 
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -21,7 +22,6 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.ViewHold
     public HistoryAdapter(List<HistoryItem> historyItems, OnDeleteClickListener onDeleteClickListener) {
         this.historyItems = historyItems;
         this.onDeleteClickListener = onDeleteClickListener;
-
     }
 
     @NonNull
@@ -33,6 +33,10 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.ViewHold
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
+        if (position < 0 || position >= historyItems.size()) {
+            return;
+        }
+
         HistoryItem historyItem = historyItems.get(position);
         holder.textViewIpAddress.setText(historyItem.getIpAddress());
         holder.textViewFileName.setText(historyItem.getFileName());

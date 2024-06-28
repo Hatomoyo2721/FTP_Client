@@ -18,7 +18,6 @@ public class SharedPreferencesUtil {
     private static final String PREF_NAME = "FTPClientPreferences";
     private static final String KEY_CONNECTION_LIST = "ConnectionList";
 
-    // Connection list methods
     public static void saveConnectionList(Context context, ArrayList<ConnectionModel> connectionList) {
         SharedPreferences sharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPreferences.edit();

@@ -49,11 +49,8 @@ public class HistoryActivity extends AppCompatActivity {
             historyItems.clear();
             historyItems.addAll(loadedHistoryItems);
             historyAdapter.notifyDataSetChanged();
-        } else {
-
         }
     }
-
 
     @SuppressLint("NotifyDataSetChanged")
     private void deleteItem(int position) {
@@ -61,18 +58,24 @@ public class HistoryActivity extends AppCompatActivity {
             Log.e("History", "Invalid position: " + position);
             return;
         }
+
         HistoryItem itemToDelete = historyItems.get(position);
         SharedPreferencesUtil.deleteHistoryItem(this, historyItems, itemToDelete);
-        historyItems.remove(position);
-        historyAdapter.notifyItemRemoved(position);
-        historyAdapter.notifyItemRangeChanged(position, historyItems.size());
+
+        runOnUiThread(() -> {
+            historyItems.remove(position);
+            historyAdapter.notifyItemRemoved(position);
+            historyAdapter.notifyItemRangeChanged(position, historyItems.size());
+        });
     }
 
     @SuppressLint("NotifyDataSetChanged")
     private void deleteAllItems() {
-        historyItems.clear();
-        historyAdapter.notifyDataSetChanged();
-        SharedPreferencesUtil.saveHistoryList(this, historyItems);
+        runOnUiThread(() -> {
+            historyItems.clear();
+            historyAdapter.notifyDataSetChanged();
+            SharedPreferencesUtil.saveHistoryList(this, historyItems);
+        });
     }
 
     private void showDeleteConfirmationDialog(int position) {
