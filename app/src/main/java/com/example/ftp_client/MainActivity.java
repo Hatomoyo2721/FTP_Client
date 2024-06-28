@@ -10,6 +10,8 @@ import android.view.MenuItem;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentTransaction;
 
 import com.example.ftp_client.ui.activity.HistoryActivity;
 import com.example.ftp_client.ui.connection.AddConnectionFragment;
@@ -33,11 +35,21 @@ public class MainActivity extends AppCompatActivity implements AddConnectionFrag
         setSupportActionBar(toolbar);
         Objects.requireNonNull(getSupportActionBar()).setDisplayShowTitleEnabled(false);
 
+        getSupportFragmentManager().addOnBackStackChangedListener(() -> {
+            Fragment currentFragment = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+            if (currentFragment instanceof AddConnectionFragment) {
+                setCustomAnimations(R.anim.slide_in_right, R.anim.slide_out_left, R.anim.slide_in_left, R.anim.slide_out_right);
+            }
+        });
+
         // Load the ConnectionListFragment initially
-        ConnectionListFragment connectionListFragment = new ConnectionListFragment();
-        getSupportFragmentManager().beginTransaction()
-                .replace(R.id.fragment_container, connectionListFragment, CONNECTION_LIST_FRAGMENT_TAG)
-                .commit();
+        switchToFragment(new ConnectionListFragment());
+
+        // Load the ConnectionListFragment initially
+//        ConnectionListFragment connectionListFragment = new ConnectionListFragment();
+//        getSupportFragmentManager().beginTransaction()
+//                .replace(R.id.fragment_container, connectionListFragment, CONNECTION_LIST_FRAGMENT_TAG)
+//                .commit();
     }
 
     @Override
@@ -53,6 +65,7 @@ public class MainActivity extends AppCompatActivity implements AddConnectionFrag
         // Hide the history menu item if the ConnectionListFragment is not visible
         ConnectionListFragment listFragment = (ConnectionListFragment)
                 getSupportFragmentManager().findFragmentByTag(CONNECTION_LIST_FRAGMENT_TAG);
+        // Uncomment if you want to control visibility of menu items based on the fragment
 //        if (listFragment != null && listFragment.isVisible()) {
 //            menu.findItem(R.id.action_history).setVisible(false);
 //        } else {
@@ -82,5 +95,18 @@ public class MainActivity extends AppCompatActivity implements AddConnectionFrag
         if (listFragment != null) {
             listFragment.addConnection(connection);
         }
+    }
+
+    private void switchToFragment(Fragment fragment) {
+        FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
+        transaction.replace(R.id.fragment_container, fragment);
+        transaction.addToBackStack(null);
+        transaction.commit();
+    }
+
+    private void setCustomAnimations(int enter, int exit, int popEnter, int popExit) {
+        getSupportFragmentManager().beginTransaction()
+                .setCustomAnimations(enter, exit, popEnter, popExit)
+                .commit();
     }
 }

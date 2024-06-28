@@ -1,5 +1,6 @@
 package com.example.ftp_client.ui.connection;
 
+import android.app.AlertDialog;
 import android.content.Context;
 import android.os.Bundle;
 import android.text.InputType;
@@ -10,7 +11,6 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -18,9 +18,6 @@ import androidx.fragment.app.Fragment;
 
 import com.example.ftp_client.R;
 import com.example.ftp_client.ui.utils.SharedPreferencesUtil;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -39,8 +36,6 @@ public class AddConnectionFragment extends Fragment {
     private OnConnectionAddedListener listener;
     private Button buttonSave;
     private Button btnBack;
-    private FirebaseAuth firebaseAuth;
-    private DatabaseReference databaseReference;
 
     @Nullable
     @Override
@@ -65,8 +60,10 @@ public class AddConnectionFragment extends Fragment {
 
     private void setListeners() {
         btnTogglePassword.setOnClickListener(v -> togglePasswordVisibility());
-        btnBack.setOnClickListener(v -> requireActivity().onBackPressed());
         buttonSave.setOnClickListener(v -> saveConnection());
+        btnBack.setOnClickListener(v -> {
+            requireActivity().getSupportFragmentManager().popBackStack();
+        });
     }
 
     @Override
@@ -91,7 +88,7 @@ public class AddConnectionFragment extends Fragment {
         try {
             _port = validatePort(port);
         } catch (NumberFormatException e) {
-            Toast.makeText(getContext(), "Invalid port number", Toast.LENGTH_SHORT).show();
+            showAlert("Invalid port number");
             return;
         }
 
@@ -111,12 +108,12 @@ public class AddConnectionFragment extends Fragment {
 
     private boolean validateInputFields(String ipAddress, String portStr, String username, String password) {
         if (TextUtils.isEmpty(ipAddress) || TextUtils.isEmpty(portStr) || TextUtils.isEmpty(username) || TextUtils.isEmpty(password)) {
-            Toast.makeText(getContext(), "Please fill in all fields", Toast.LENGTH_SHORT).show();
+            showAlert("Please fill in all fields");
             return false;
         }
 
         if (!isValidIPAddress(ipAddress)) {
-            Toast.makeText(getContext(), "Please enter a valid IP address", Toast.LENGTH_SHORT).show();
+            showAlert("Please enter a valid IP address");
             return false;
         }
 
@@ -141,8 +138,7 @@ public class AddConnectionFragment extends Fragment {
 
     private boolean validateIpAndUsername(Map<String, Set<String>> ipUsernameMap, String ipAddress, String username) {
         if (ipUsernameMap.size() >= 10 && !ipUsernameMap.containsKey(ipAddress)) {
-            Toast.makeText(getContext(),
-                    "You can only add a maximum of 10 different IP addresses.", Toast.LENGTH_SHORT).show();
+            showAlert("You can only add a maximum of 10 different IP addresses.");
             return false;
         }
 
@@ -150,14 +146,12 @@ public class AddConnectionFragment extends Fragment {
 
         if (usernamesForIp != null) {
             if (usernamesForIp.size() >= 2 && !usernamesForIp.contains(username)) {
-                Toast.makeText(getContext(),
-                        "This IP address already has two connections with different usernames.", Toast.LENGTH_SHORT).show();
+                showAlert("This IP address already has two connections with different usernames.");
                 return false;
             }
 
             if (usernamesForIp.contains(username)) {
-                Toast.makeText(getContext(),
-                        "A connection with this IP address and username already exists.", Toast.LENGTH_SHORT).show();
+                showAlert("A connection with this IP address and username already exists.");
                 return false;
             }
         }
@@ -184,6 +178,13 @@ public class AddConnectionFragment extends Fragment {
 
         editTextPassword.setSelection(editTextPassword.getText().length());
         isPasswordVisible = !isPasswordVisible;
+    }
+
+    private void showAlert(String message) {
+        new AlertDialog.Builder(getContext())
+                .setMessage(message)
+                .setPositiveButton(android.R.string.ok, null)
+                .show();
     }
 
     public interface OnConnectionAddedListener {

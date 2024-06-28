@@ -69,6 +69,7 @@ public class ConnectionListFragment extends Fragment implements ConnectionAdapte
 
         buttonAddConnection.setOnClickListener(v -> {
             FragmentTransaction transaction = requireActivity().getSupportFragmentManager().beginTransaction();
+            transaction.setCustomAnimations(R.anim.slide_in_right, R.anim.slide_out_left, R.anim.slide_in_left, R.anim.slide_out_right);
             transaction.replace(R.id.fragment_container, new AddConnectionFragment());
             transaction.addToBackStack(null);
             transaction.commit();
