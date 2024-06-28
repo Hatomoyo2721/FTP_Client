@@ -52,6 +52,7 @@ public class FileTransferHelper extends Fragment {
     private Button buttonSendFile;
     private Button buttonSelectFile;
     private Button buttonReloadServer;
+    private Button buttonDisconnect;
     private TextView textViewStatus;
 
     private String serverIP;
@@ -62,7 +63,6 @@ public class FileTransferHelper extends Fragment {
     private AlertDialog serverShutdownDialog;
     private Handler countdownHandler;
     private Runnable countdownRunnable;
-    private int countdownTime = 5;
 
     public FileTransferHelper() {
         // Required empty public constructor
@@ -92,6 +92,7 @@ public class FileTransferHelper extends Fragment {
         buttonSendFile = view.findViewById(R.id.buttonSendFile);
         buttonSelectFile = view.findViewById(R.id.buttonSelectFile);
         buttonReloadServer = view.findViewById(R.id.buttonReloadServer);
+        buttonDisconnect = view.findViewById(R.id.buttonDisconnect);
         textViewStatus = view.findViewById(R.id.textViewStatus);
     }
 
@@ -99,6 +100,7 @@ public class FileTransferHelper extends Fragment {
         buttonSendFile.setOnClickListener(v -> sendFile());
         buttonSelectFile.setOnClickListener(v -> selectFile());
         buttonReloadServer.setOnClickListener(v -> reloadServer());
+        buttonDisconnect.setOnClickListener(v -> disconnect());
     }
 
     private void saveSentFileDetails(String ipAddress, String fileName, Uri fileUri) {
@@ -228,8 +230,9 @@ public class FileTransferHelper extends Fragment {
                         .setMessage("The server has shut down.")
                         .setPositiveButton("Ok", (dialog, which) -> {
                             dialog.dismiss();
-                            // Navigate back to the connection list
-                            requireActivity().getSupportFragmentManager().popBackStack();
+                            new Handler().postDelayed(() -> {
+                                requireActivity().getSupportFragmentManager().popBackStack();
+                            }, 2000);
                         });
 
                 serverShutdownDialog = builder.create();
@@ -279,6 +282,43 @@ public class FileTransferHelper extends Fragment {
             }
         }).start();
     }
+
+    @SuppressLint("SetTextI18n")
+    private void disconnect() {
+        if (serverIP == null) {
+            if (isAdded()) {
+                requireActivity().runOnUiThread(() -> textViewStatus.setText("No server connection to disconnect from"));
+            }
+            return;
+        }
+
+        new Thread(() -> {
+            try (Socket socket = new Socket(serverIP, serverPort);
+                 DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream())) {
+
+                outputStream.writeUTF("DISCONNECT");
+                outputStream.flush();
+
+                socket.close();
+
+                if (isAdded()) {
+                    requireActivity().runOnUiThread(() -> {
+                        textViewStatus.setText("Disconnected from server");
+                        new Handler().postDelayed(() -> {
+                            // Navigate back to ConnectionListFragment
+                            requireActivity().getSupportFragmentManager().popBackStack();
+                        }, 2000); // 2 seconds delay
+                    });
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+                if (isAdded()) {
+                    requireActivity().runOnUiThread(() -> textViewStatus.setText("Error disconnecting: " + e.getMessage()));
+                }
+            }
+        }).start();
+    }
+
 
     @SuppressLint("Range")
     private String getFileName(Uri uri) {
