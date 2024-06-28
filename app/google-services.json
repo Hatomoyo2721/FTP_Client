@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "1061336090646",
+    "firebase_url": "https://ftp-client-new-default-rtdb.firebaseio.com",
+    "project_id": "ftp-client-new",
+    "storage_bucket": "ftp-client-new.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1061336090646:android:84272094e9fb706af50d37",
+        "android_client_info": {
+          "package_name": "com.example.ftp_client"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBldSsr9iSvVDHAA3toHm-ZTQ_AFDkRCA4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <Button
+        android:id="@+id/buttonConnect"
+        android:layout_width="250dp"
+        android:layout_height="wrap_content"
+        android:text="Connect"
+        android:backgroundTint="@color/white"
+        android:drawableStart="@drawable/baseline_connect"
+        android:textColor="@android:color/black"
+        android:layout_marginBottom="8dp"
+        android:layout_gravity="center"
+        android:textAlignment="center"
+        android:iconTint="@android:color/black"/>
+
+    <Button
+        android:id="@+id/buttonDelete"
+        android:layout_width="250dp"
+        android:layout_height="wrap_content"
+        android:text="Delete"
+        android:backgroundTint="@color/white"
+        android:textAlignment="center"
+        android:layout_gravity="center"
+        android:drawableStart="@drawable/baseline_delete"
+        android:textColor="@android:color/black"
+        android:iconTint="@android:color/black"/>
+
+    <Button
+        android:id="@+id/buttonProperties"
+        android:layout_width="250dp"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/buttonDelete"
+        android:text="Properties"
+        android:backgroundTint="@color/white"
+        android:drawableStart="@drawable/baseline_info"
+        android:textColor="@android:color/black"
+        android:iconTint="@android:color/black"
+        android:layout_marginTop="8dp"
+        android:layout_gravity="center"
+        android:textAlignment="center"
+        android:onClick="showProperties" />
+
+    <!-- Properties layout (initially hidden) -->
+    <LinearLayout
+        android:id="@+id/layoutProperties"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone"
+        android:layout_below="@id/buttonProperties">
+
+        <TextView
+            android:id="@+id/textViewIP"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="IP Address: "
+            android:layout_marginTop="5dp"/>
+
+        <TextView
+            android:id="@+id/textViewPort"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Port: "
+            android:layout_marginTop="1dp"/>
+
+        <TextView
+            android:id="@+id/textViewUsername"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Username: "
+            android:layout_marginTop="1dp"/>
+
+        <TextView
+            android:id="@+id/textViewPassword"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Password: ********"
+            android:layout_marginTop="1dp"/>
+    </LinearLayout>
+
+</LinearLayout>
