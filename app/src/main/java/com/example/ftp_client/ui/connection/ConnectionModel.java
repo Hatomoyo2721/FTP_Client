@@ -3,6 +3,8 @@ package com.example.ftp_client.ui.connection;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import com.google.gson.Gson;
+
 import java.util.UUID;
 
 public class ConnectionModel implements Parcelable {
@@ -105,5 +107,9 @@ public class ConnectionModel implements Parcelable {
     @Override
     public int hashCode() {
         return id.hashCode();
+    }
+
+    public String toJson() {
+        return new Gson().toJson(this);
     }
 }

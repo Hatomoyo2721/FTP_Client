@@ -120,12 +120,14 @@ public class ConnectionListFragment extends Fragment implements ConnectionAdapte
         updateConnectionList();
     }
 
+    @SuppressLint("NotifyDataSetChanged")
     public void updateConnectionList() {
         connectionList = SharedPreferencesUtil.loadConnectionList(requireContext());
         if (connectionList == null) {
             connectionList = new ArrayList<>();
         }
-        adapter = new ConnectionAdapter(getContext(), connectionList, this);
+        adapter = new ConnectionAdapter(getContext(), connectionList, this); //Update list
+        adapter.notifyDataSetChanged(); //Announce adapter changing
         recyclerView.setAdapter(adapter);
 
         if (connectionList.isEmpty()) {

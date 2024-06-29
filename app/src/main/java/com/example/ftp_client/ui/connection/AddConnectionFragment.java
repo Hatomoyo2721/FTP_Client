@@ -11,6 +11,9 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.ProgressBar;
+import android.widget.RelativeLayout;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -19,6 +22,10 @@ import androidx.fragment.app.Fragment;
 import com.example.ftp_client.R;
 import com.example.ftp_client.ui.utils.SharedPreferencesUtil;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -35,7 +42,11 @@ public class AddConnectionFragment extends Fragment {
     private boolean isPasswordVisible = false;
     private OnConnectionAddedListener listener;
     private Button buttonSave;
-    private Button btnBack;
+    private Button buttonBack;
+
+    private ProgressBar loadingProgressBar;
+    private TextView loadingTextView;
+    private RelativeLayout loadingScreenLayout;
 
     @Nullable
     @Override
@@ -55,13 +66,17 @@ public class AddConnectionFragment extends Fragment {
         editTextPassword = view.findViewById(R.id.editTextPassword);
         btnTogglePassword = view.findViewById(R.id.btnTogglePassword);
         buttonSave = view.findViewById(R.id.buttonSave);
-        btnBack = view.findViewById(R.id.btnBack);
+        buttonBack = view.findViewById(R.id.btnBack);
+
+        loadingProgressBar = view.findViewById(R.id.loadingProgressBar);
+        loadingTextView = view.findViewById(R.id.loadingTextView);
+        loadingScreenLayout = view.findViewById(R.id.loadingScreenLayout);
     }
 
     private void setListeners() {
         btnTogglePassword.setOnClickListener(v -> togglePasswordVisibility());
         buttonSave.setOnClickListener(v -> saveConnection());
-        btnBack.setOnClickListener(v -> {
+        buttonBack.setOnClickListener(v -> {
             requireActivity().getSupportFragmentManager().popBackStack();
         });
     }
@@ -99,11 +114,96 @@ public class AddConnectionFragment extends Fragment {
 
         ConnectionModel connection = new ConnectionModel(ipAddress, _port, username, password);
 
-        if (listener != null) {
-            listener.onConnectionAdded(connection);
-        }
+        //Send to Server - Java
+        String connectionJson = connection.toJson();
+        sendJsonToServer(connectionJson, connection);
+    }
 
-        requireActivity().getSupportFragmentManager().popBackStack();
+    private void sendJsonToServer(String connectionJson, ConnectionModel connection) {
+        String ipAddress = editTextIPAddress.getText().toString().trim();
+        String port = editTextPort.getText().toString().trim();
+
+        // Show loading screen
+        showLoadingScreen();
+
+        new Thread(() -> {
+            boolean isConnected = false;
+            try (Socket socket = new Socket()) {
+                socket.connect(new InetSocketAddress(ipAddress, Integer.parseInt(port)), 5000);
+                if (socket.isConnected()) {
+                    try (DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream())) {
+                        outputStream.writeUTF("CONNECTION");
+                        outputStream.writeUTF(connectionJson);
+                        outputStream.flush();
+                        isConnected = true;
+                        showAlertOnUiThread("Connection added successfully");
+
+                        // Save the new connection to SharedPreferences only if connected successfully
+                        ArrayList<ConnectionModel> connectionList = SharedPreferencesUtil.loadConnectionList(requireContext());
+                        connectionList.add(connection);
+                        SharedPreferencesUtil.saveConnectionList(requireContext(), connectionList);
+
+                        if (listener != null) {
+                            listener.onConnectionAdded(connection);
+                        }
+
+                        requireActivity().getSupportFragmentManager().popBackStack();
+                    }
+                } else {
+                    showAlertOnUiThread("Server is not running");
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+                showAlertOnUiThread("Failed to connect to server: " + e.getMessage());
+            } finally {
+                hideLoadingScreenOnUiThread();
+            }
+        }).start();
+    }
+
+    private void showAlertOnUiThread(String message) {
+        if (isAdded()) {
+            requireActivity().runOnUiThread(() -> {
+                showAlert(message);
+            });
+        }
+    }
+
+    private void hideLoadingScreenOnUiThread() {
+        if (isAdded()) {
+            requireActivity().runOnUiThread(this::hideLoadingScreen);
+        }
+    }
+
+    private void showLoadingScreen() {
+        requireActivity().runOnUiThread(() -> {
+            loadingScreenLayout.setVisibility(View.VISIBLE);
+            setInteractionEnabled(false);
+        });
+    }
+
+    private void hideLoadingScreen() {
+        requireActivity().runOnUiThread(() -> {
+            loadingScreenLayout.setVisibility(View.GONE);
+            setInteractionEnabled(true);
+        });
+    }
+
+    private void setInteractionEnabled(boolean enabled) {
+        View rootView = getView();
+        if (rootView != null) {
+            setViewGroupEnabled((ViewGroup) rootView, enabled);
+        }
+    }
+
+    private void setViewGroupEnabled(ViewGroup viewGroup, boolean enabled) {
+        for (int i = 0; i < viewGroup.getChildCount(); i++) {
+            View child = viewGroup.getChildAt(i);
+            child.setEnabled(enabled);
+            if (child instanceof ViewGroup) {
+                setViewGroupEnabled((ViewGroup) child, enabled);
+            }
+        }
     }
 
     private boolean validateInputFields(String ipAddress, String portStr, String username, String password) {
@@ -181,10 +281,18 @@ public class AddConnectionFragment extends Fragment {
     }
 
     private void showAlert(String message) {
-        new AlertDialog.Builder(getContext())
-                .setMessage(message)
-                .setPositiveButton(android.R.string.ok, null)
-                .show();
+        if (isAdded() && getActivity() != null) {
+            getActivity().runOnUiThread(() -> {
+                new AlertDialog.Builder(getContext())
+                        .setMessage(message)
+                        .setPositiveButton(android.R.string.ok, (dialog, which) -> {
+                            if (!isVisible()) {
+                                requireActivity().getSupportFragmentManager().popBackStack();
+                            }
+                        })
+                        .show();
+            });
+        }
     }
 
     public interface OnConnectionAddedListener {

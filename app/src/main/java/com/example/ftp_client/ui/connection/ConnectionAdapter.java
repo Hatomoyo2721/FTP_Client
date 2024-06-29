@@ -17,7 +17,7 @@ import java.util.ArrayList;
 public class ConnectionAdapter extends RecyclerView.Adapter<ConnectionAdapter.ConnectionViewHolder> {
 
     private final Context context;
-    private final ArrayList<ConnectionModel> connectionList;
+    private ArrayList<ConnectionModel> connectionList;
     private final OnConnectionClickListener listener;
 
     public ConnectionAdapter(Context context, ArrayList<ConnectionModel> connectionList, OnConnectionClickListener listener) {
