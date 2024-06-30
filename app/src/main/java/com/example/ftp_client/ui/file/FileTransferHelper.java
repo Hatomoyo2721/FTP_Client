@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.provider.OpenableColumns;
@@ -119,7 +120,8 @@ public class FileTransferHelper extends Fragment {
                 // Check if JSON is an array
                 JsonElement jsonElement = JsonParser.parseString(json);
                 if (jsonElement.isJsonArray()) {
-                    Type type = new TypeToken<ArrayList<HistoryItem>>() {}.getType();
+                    Type type = new TypeToken<ArrayList<HistoryItem>>() {
+                    }.getType();
                     historyItems = gson.fromJson(json, type);
                     Log.d("History", "Loaded existing history: " + historyItems.size() + " items.");
                 } else {
@@ -172,12 +174,18 @@ public class FileTransferHelper extends Fragment {
             return;
         }
 
-        new Thread(() -> {
+        new SendFileTask().execute(selectedFileUri);
+    }
+
+    private class SendFileTask extends AsyncTask<Uri, Void, String> {
+        @Override
+        protected String doInBackground(Uri... uris) {
+            Uri fileUri = uris[0];
             try (Socket socket = new Socket(serverIP, serverPort);
                  DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream());
-                 InputStream fileInputStream = requireContext().getContentResolver().openInputStream(selectedFileUri)) {
+                 InputStream fileInputStream = requireContext().getContentResolver().openInputStream(fileUri)) {
 
-                String fileName = getFileName(selectedFileUri);
+                String fileName = getFileName(fileUri);
                 if (fileName == null) {
                     fileName = "Untitled";
                 }
@@ -187,7 +195,7 @@ public class FileTransferHelper extends Fragment {
                 outputStream.writeUTF(fileName);
 
                 // Send file size
-                outputStream.writeLong(getFileSize(selectedFileUri));
+                outputStream.writeLong(getFileSize(fileUri));
 
                 // Send file content
                 byte[] buffer = new byte[BUFFER_SIZE];
@@ -198,21 +206,21 @@ public class FileTransferHelper extends Fragment {
                 }
 
                 // Save for history view
-                saveSentFileDetails(serverIP, fileName, selectedFileUri);
+                saveSentFileDetails(serverIP, fileName, fileUri);
 
-                // Notify UI thread that file has been sent
-                String finalFileName = fileName;
-                if (isAdded()) {
-                    requireActivity().runOnUiThread(() -> textViewStatus.setText("File sent: " + finalFileName));
-                }
+                return "File sent: " + fileName;
             } catch (IOException e) {
                 e.printStackTrace();
-                if (isAdded()) {
-                    requireActivity().runOnUiThread(() -> textViewStatus.setText("Error sending file: " + e.getMessage()));
-                    handleServerShutdown();
-                }
+                return "Error sending file: " + e.getMessage();
             }
-        }).start();
+        }
+
+        @Override
+        protected void onPostExecute(String result) {
+            if (isAdded()) {
+                textViewStatus.setText(result);
+            }
+        }
     }
 
     private void handleServerShutdown() {
