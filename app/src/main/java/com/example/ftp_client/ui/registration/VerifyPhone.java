@@ -1,7 +1,5 @@
 package com.example.ftp_client.ui.registration;
 
-import static androidx.core.content.ContentProviderCompat.requireContext;
-
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.os.Bundle;

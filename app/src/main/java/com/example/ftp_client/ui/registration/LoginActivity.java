@@ -1,6 +1,7 @@
 package com.example.ftp_client.ui.registration;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
@@ -138,7 +139,7 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void checkAndRequestPermissions() {
-        String[] permissions = {
+        @SuppressLint("InlinedApi") String[] permissions = {
                 Manifest.permission.INTERNET,
                 Manifest.permission.FOREGROUND_SERVICE,
                 Manifest.permission.ACCESS_NETWORK_STATE,

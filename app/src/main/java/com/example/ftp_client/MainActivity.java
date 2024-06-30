@@ -65,26 +65,26 @@ public class MainActivity extends AppCompatActivity implements AddConnectionFrag
         // Hide the history menu item if the ConnectionListFragment is not visible
         ConnectionListFragment listFragment = (ConnectionListFragment)
                 getSupportFragmentManager().findFragmentByTag(CONNECTION_LIST_FRAGMENT_TAG);
+
         // Uncomment if you want to control visibility of menu items based on the fragment
 //        if (listFragment != null && listFragment.isVisible()) {
 //            menu.findItem(R.id.action_history).setVisible(false);
 //        } else {
 //            menu.findItem(R.id.action_history).setVisible(true);
 //        }
+
         return super.onPrepareOptionsMenu(menu);
     }
 
     @SuppressLint("NonConstantResourceId")
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        switch (item.getItemId()) {
-            case R.id.action_history:
-                Intent intent = new Intent(this, HistoryActivity.class);
-                startActivity(intent);
-                return true;
-            default:
-                return super.onOptionsItemSelected(item);
+        if (item.getItemId() == R.id.action_history) {
+            Intent intent = new Intent(this, HistoryActivity.class);
+            startActivity(intent);
+            return true;
         }
+        return super.onOptionsItemSelected(item);
     }
 
     @Override

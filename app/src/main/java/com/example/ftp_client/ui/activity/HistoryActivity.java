@@ -54,19 +54,23 @@ public class HistoryActivity extends AppCompatActivity {
 
     @SuppressLint("NotifyDataSetChanged")
     private void deleteItem(int position) {
-        if (position < 0 || position >= historyItems.size()) {
-            Log.e("History", "Invalid position: " + position);
-            return;
+        try {
+            if (position < 0 || position >= historyItems.size()) {
+                Log.e("History", "Invalid position: " + position);
+                return;
+            }
+
+            HistoryItem itemToDelete = historyItems.get(position);
+            SharedPreferencesUtil.deleteHistoryItem(this, historyItems, itemToDelete);
+
+            runOnUiThread(() -> {
+                historyItems.remove(position);
+                historyAdapter.notifyItemRemoved(position);
+                historyAdapter.notifyItemRangeChanged(position, historyItems.size());
+            });
+        } catch (IndexOutOfBoundsException e) {
+            Log.e("History", "Exception when deleting item: " + e.getMessage());
         }
-
-        HistoryItem itemToDelete = historyItems.get(position);
-        SharedPreferencesUtil.deleteHistoryItem(this, historyItems, itemToDelete);
-
-        runOnUiThread(() -> {
-            historyItems.remove(position);
-            historyAdapter.notifyItemRemoved(position);
-            historyAdapter.notifyItemRangeChanged(position, historyItems.size());
-        });
     }
 
     @SuppressLint("NotifyDataSetChanged")

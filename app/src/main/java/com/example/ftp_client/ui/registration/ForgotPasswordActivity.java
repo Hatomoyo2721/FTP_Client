@@ -35,29 +35,23 @@ public class ForgotPasswordActivity extends AppCompatActivity {
         tvCountDown = findViewById(R.id.tvCountdown);
         mAuth = FirebaseAuth.getInstance();
 
-        backToLogin.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent i = new Intent(ForgotPasswordActivity.this, LoginActivity.class);
-                startActivity(i);
-                finish();
-            }
+        backToLogin.setOnClickListener(v -> {
+            Intent i = new Intent(ForgotPasswordActivity.this, LoginActivity.class);
+            startActivity(i);
+            finish();
         });
 
-        sendEmailVerify.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                String email = inputEmailVerify.getText().toString().trim();
+        sendEmailVerify.setOnClickListener(v -> {
+            String email = inputEmailVerify.getText().toString().trim();
 
-                if (TextUtils.isEmpty(email)) {
-                    inputEmailVerify.setError("Enter your email address");
-                    inputEmailVerify.requestFocus();
-                } else if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-                    inputEmailVerify.setError("Enter a valid email address");
-                    inputEmailVerify.requestFocus();
-                } else {
-                    sendPasswordResetEmail(email); // Gửi email reset mật khẩu
-                }
+            if (TextUtils.isEmpty(email)) {
+                inputEmailVerify.setError("Enter your email address");
+                inputEmailVerify.requestFocus();
+            } else if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                inputEmailVerify.setError("Enter a valid email address");
+                inputEmailVerify.requestFocus();
+            } else {
+                sendPasswordResetEmail(email); // Gửi email reset mật khẩu
             }
         });
     }

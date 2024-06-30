@@ -37,12 +37,10 @@ public class ConnectionListFragment extends Fragment implements ConnectionAdapte
     private Button buttonAddConnection;
 
     private static final int CONNECTION_DELAY = 2000;
-    private ProgressBar loadingConnectionView;
-    private TextView textViewLoading;
+    private final ThreadLocal<ProgressBar> loadingConnectionView = new ThreadLocal<>();
+    private final ThreadLocal<TextView> textViewLoading = new ThreadLocal<>();
     private View loadingView;
     private View overlayView;
-
-    private int selectedConnectionPosition = -1;
 
     @Nullable
     @Override
@@ -56,8 +54,8 @@ public class ConnectionListFragment extends Fragment implements ConnectionAdapte
 
         // Setup loading view
         loadingView = inflater.inflate(R.layout.loading_screen_layout, container, false);
-        loadingConnectionView = loadingView.findViewById(R.id.loadingProgressBar);
-        textViewLoading = loadingView.findViewById(R.id.loadingTextView);
+        loadingConnectionView.set(loadingView.findViewById(R.id.loadingProgressBar));
+        textViewLoading.set(loadingView.findViewById(R.id.loadingTextView));
         overlayView = view.findViewById(R.id.overlayView);
 
         // Load connection list from SharedPreferences
@@ -85,11 +83,7 @@ public class ConnectionListFragment extends Fragment implements ConnectionAdapte
         super.onResume();
         updateConnectionList();
     }
-
-    public ArrayList<ConnectionModel> getConnectionList() {
-        return connectionList;
-    }
-
+    
     @Override
     public void onConnectionClick(ConnectionModel connection) {
         BottomSheetConnectionActions bottomSheet = BottomSheetConnectionActions.newInstance(connection);

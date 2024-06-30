@@ -14,6 +14,7 @@ import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -44,8 +45,8 @@ public class AddConnectionFragment extends Fragment {
     private Button buttonSave;
     private Button buttonBack;
 
-    private ProgressBar loadingProgressBar;
-    private TextView loadingTextView;
+    private final ThreadLocal<ProgressBar> loadingProgressBar = new ThreadLocal<>();
+    private final ThreadLocal<TextView> loadingTextView = new ThreadLocal<>();
     private RelativeLayout loadingScreenLayout;
 
     @Nullable
@@ -68,17 +69,15 @@ public class AddConnectionFragment extends Fragment {
         buttonSave = view.findViewById(R.id.buttonSave);
         buttonBack = view.findViewById(R.id.btnBack);
 
-        loadingProgressBar = view.findViewById(R.id.loadingProgressBar);
-        loadingTextView = view.findViewById(R.id.loadingTextView);
+        loadingProgressBar.set(view.findViewById(R.id.loadingProgressBar));
+        loadingTextView.set(view.findViewById(R.id.loadingTextView));
         loadingScreenLayout = view.findViewById(R.id.loadingScreenLayout);
     }
 
     private void setListeners() {
         btnTogglePassword.setOnClickListener(v -> togglePasswordVisibility());
         buttonSave.setOnClickListener(v -> saveConnection());
-        buttonBack.setOnClickListener(v -> {
-            requireActivity().getSupportFragmentManager().popBackStack();
-        });
+        buttonBack.setOnClickListener(v -> requireActivity().getSupportFragmentManager().popBackStack());
     }
 
     @Override
@@ -103,7 +102,7 @@ public class AddConnectionFragment extends Fragment {
         try {
             _port = validatePort(port);
         } catch (NumberFormatException e) {
-            showAlert("Invalid port number");
+            Toast.makeText(getActivity(),"Invalid port number", Toast.LENGTH_LONG).show();
             return;
         }
 
@@ -147,7 +146,9 @@ public class AddConnectionFragment extends Fragment {
                             listener.onConnectionAdded(connection);
                         }
 
-                        requireActivity().getSupportFragmentManager().popBackStack();
+                        if (isAdded()) {
+                            requireActivity().getSupportFragmentManager().popBackStack();
+                        }
                     }
                 } else {
                     showAlertOnUiThread("Server is not running");
@@ -163,9 +164,7 @@ public class AddConnectionFragment extends Fragment {
 
     private void showAlertOnUiThread(String message) {
         if (isAdded()) {
-            requireActivity().runOnUiThread(() -> {
-                showAlert(message);
-            });
+            requireActivity().runOnUiThread(() -> showAlert(message));
         }
     }
 
@@ -176,17 +175,21 @@ public class AddConnectionFragment extends Fragment {
     }
 
     private void showLoadingScreen() {
-        requireActivity().runOnUiThread(() -> {
-            loadingScreenLayout.setVisibility(View.VISIBLE);
-            setInteractionEnabled(false);
-        });
+        if (isAdded()) {
+            requireActivity().runOnUiThread(() -> {
+                loadingScreenLayout.setVisibility(View.VISIBLE);
+                setInteractionEnabled(false);
+            });
+        }
     }
 
     private void hideLoadingScreen() {
-        requireActivity().runOnUiThread(() -> {
-            loadingScreenLayout.setVisibility(View.GONE);
-            setInteractionEnabled(true);
-        });
+        if (isAdded()) {
+            requireActivity().runOnUiThread(() -> {
+                loadingScreenLayout.setVisibility(View.GONE);
+                setInteractionEnabled(true);
+            });
+        }
     }
 
     private void setInteractionEnabled(boolean enabled) {
@@ -208,12 +211,17 @@ public class AddConnectionFragment extends Fragment {
 
     private boolean validateInputFields(String ipAddress, String portStr, String username, String password) {
         if (TextUtils.isEmpty(ipAddress) || TextUtils.isEmpty(portStr) || TextUtils.isEmpty(username) || TextUtils.isEmpty(password)) {
-            showAlert("Please fill in all fields");
+            Toast.makeText(getActivity(),"Please fill in all fields", Toast.LENGTH_LONG).show();
             return false;
         }
 
         if (!isValidIPAddress(ipAddress)) {
-            showAlert("Please enter a valid IP address");
+            Toast.makeText(getActivity(),"Please enter a valid IP address", Toast.LENGTH_LONG).show();
+            return false;
+        }
+
+        if (!isValidUsername(username)) {
+            Toast.makeText(getActivity(), "Username can only contain letters, numbers, and underscores (_)", Toast.LENGTH_SHORT).show();
             return false;
         }
 
@@ -267,6 +275,11 @@ public class AddConnectionFragment extends Fragment {
         return ip.matches(ipRegex);
     }
 
+    private boolean isValidUsername(String username) {
+        String usernameRegex = "^[a-zA-Z0-9_]+$";
+        return username.matches(usernameRegex);
+    }
+
     private void togglePasswordVisibility() {
         if (isPasswordVisible) {
             editTextPassword.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
@@ -282,16 +295,14 @@ public class AddConnectionFragment extends Fragment {
 
     private void showAlert(String message) {
         if (isAdded() && getActivity() != null) {
-            getActivity().runOnUiThread(() -> {
-                new AlertDialog.Builder(getContext())
-                        .setMessage(message)
-                        .setPositiveButton(android.R.string.ok, (dialog, which) -> {
-                            if (!isVisible()) {
-                                requireActivity().getSupportFragmentManager().popBackStack();
-                            }
-                        })
-                        .show();
-            });
+            getActivity().runOnUiThread(() -> new AlertDialog.Builder(getContext())
+                    .setMessage(message)
+                    .setPositiveButton(android.R.string.ok, (dialog, which) -> {
+                        if (isAdded()) {
+                            requireActivity().getSupportFragmentManager().popBackStack();
+                        }
+                    })
+                    .show());
         }
     }
 

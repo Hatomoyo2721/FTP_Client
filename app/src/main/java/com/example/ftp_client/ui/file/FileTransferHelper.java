@@ -29,7 +29,6 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
 
-import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -135,11 +134,6 @@ public class FileTransferHelper extends Fragment {
             }
         }
 
-        if (historyItems == null) {
-            historyItems = new ArrayList<>();
-            Log.d("History", "History items list was null, creating new list.");
-        }
-
         String timestamp = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(new Date());
         HistoryItem newHistoryItem = new HistoryItem(ipAddress, fileName, fileUri.toString(), timestamp);
         historyItems.add(newHistoryItem);
@@ -180,7 +174,6 @@ public class FileTransferHelper extends Fragment {
 
         new Thread(() -> {
             try (Socket socket = new Socket(serverIP, serverPort);
-                 DataInputStream inputStream = new DataInputStream(socket.getInputStream());
                  DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream());
                  InputStream fileInputStream = requireContext().getContentResolver().openInputStream(selectedFileUri)) {
 
@@ -200,7 +193,7 @@ public class FileTransferHelper extends Fragment {
                 byte[] buffer = new byte[BUFFER_SIZE];
                 int bytesRead;
 
-                while ((bytesRead = fileInputStream.read(buffer)) != -1) {
+                while ((bytesRead = Objects.requireNonNull(fileInputStream).read(buffer)) != -1) {
                     outputStream.write(buffer, 0, bytesRead);
                 }
 
@@ -230,9 +223,8 @@ public class FileTransferHelper extends Fragment {
                         .setMessage("The server has shut down.")
                         .setPositiveButton("Ok", (dialog, which) -> {
                             dialog.dismiss();
-                            new Handler().postDelayed(() -> {
-                                requireActivity().getSupportFragmentManager().popBackStack();
-                            }, 2000);
+                            new Handler().postDelayed(() ->
+                                    requireActivity().getSupportFragmentManager().popBackStack(), 2000);
                         });
 
                 serverShutdownDialog = builder.create();
