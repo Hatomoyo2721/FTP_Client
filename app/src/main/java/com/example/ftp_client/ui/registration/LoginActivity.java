@@ -2,6 +2,7 @@ package com.example.ftp_client.ui.registration;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
@@ -114,6 +115,7 @@ public class LoginActivity extends AppCompatActivity {
                         if (userStorage != null && userStorage.password.equals(password)) {
                             Log.d("LoginActivity", "Password matches");
                             Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                            intent.putExtra("email", email);
                             startActivity(intent);
                             finish();
                         } else {
@@ -165,11 +167,20 @@ public class LoginActivity extends AppCompatActivity {
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == PERMISSION_REQUEST_CODE) {
-            for (int i = 0; i < permissions.length; i++) {
-                if (grantResults[i] != PackageManager.PERMISSION_GRANTED) {
-                    // Handle the case where the user denies the permission
-                    Toast.makeText(this, "Permission " + permissions[i] + " was denied.", Toast.LENGTH_SHORT).show();
+            boolean allGranted = true;
+            for (int result : grantResults) {
+                if (result != PackageManager.PERMISSION_GRANTED) {
+                    allGranted = false;
+                    break;
                 }
+            }
+            if (!allGranted) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setTitle("Permission Required")
+                        .setMessage("All permissions are required to use this app. Please grant all permissions in order to proceed.")
+                        .setPositiveButton("OK", (dialog, which) -> finish())
+                        .setCancelable(false) // Prevent dismissing dialog by tapping outside
+                        .show();
             }
         }
     }
