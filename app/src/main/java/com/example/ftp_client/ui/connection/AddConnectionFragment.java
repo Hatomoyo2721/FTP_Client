@@ -111,7 +111,9 @@ public class AddConnectionFragment extends Fragment {
 
         if (!validateIpAndUsername(ipUsernameMap, ipAddress, username)) return;
 
-        ConnectionModel connection = new ConnectionModel(ipAddress, _port, username, password);
+        String email = SharedPreferencesUtil.getEmail(requireContext());
+
+        ConnectionModel connection = new ConnectionModel(ipAddress, _port, username, password, email);
 
         //Send to Server - Java
         String connectionJson = connection.toJson();

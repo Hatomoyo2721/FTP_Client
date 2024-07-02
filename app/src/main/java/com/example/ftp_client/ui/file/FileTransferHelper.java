@@ -263,7 +263,8 @@ public class FileTransferHelper extends Fragment {
     @SuppressLint("SetTextI18n")
     private void reloadServer() {
         if (isAdded()) {
-            requireActivity().runOnUiThread(() -> textViewStatus.setText("Waiting for server to reload, please wait a moment..."));
+            requireActivity().runOnUiThread(() ->
+                    textViewStatus.setText("Waiting for server to reload, please wait a moment..."));
         }
 
         new Thread(() -> {
@@ -287,7 +288,8 @@ public class FileTransferHelper extends Fragment {
     private void disconnect() {
         if (serverIP == null) {
             if (isAdded()) {
-                requireActivity().runOnUiThread(() -> textViewStatus.setText("No server connection to disconnect from"));
+                requireActivity().runOnUiThread(() ->
+                        textViewStatus.setText("No server connection to disconnect from"));
             }
             return;
         }

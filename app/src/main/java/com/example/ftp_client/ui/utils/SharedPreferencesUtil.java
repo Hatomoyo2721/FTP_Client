@@ -17,6 +17,7 @@ public class SharedPreferencesUtil {
 
     private static final String PREF_NAME = "FTPClientPreferences";
     private static final String KEY_CONNECTION_LIST = "ConnectionList";
+    private static final String KEY_EMAIL = "UserEmail";
 
     public static void saveConnectionList(Context context, ArrayList<ConnectionModel> connectionList) {
         SharedPreferences sharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
@@ -63,4 +64,15 @@ public class SharedPreferencesUtil {
         saveHistoryList(context, historyList);
     }
 
+    public static void saveEmail(Context context, String email) {
+        SharedPreferences sharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putString(KEY_EMAIL, email);
+        editor.apply();
+    }
+
+    public static String getEmail(Context context) {
+        SharedPreferences sharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        return sharedPreferences.getString(KEY_EMAIL, null);
+    }
 }

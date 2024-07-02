@@ -5,6 +5,9 @@ import android.os.Parcelable;
 
 import com.google.gson.Gson;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 import java.util.UUID;
 
 public class ConnectionModel implements Parcelable {
@@ -13,13 +16,17 @@ public class ConnectionModel implements Parcelable {
     private int port;
     private String username;
     private String password;
+    private String email;
+    private String creationDate;
 
-    public ConnectionModel(String ipAddress, int port, String username, String password) {
+    public ConnectionModel(String ipAddress, int port, String username, String password, String email) {
         this.id = UUID.randomUUID();
         this.ipAddress = ipAddress;
         this.port = port;
         this.username = username;
         this.password = password;
+        this.email = email;
+        this.creationDate = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(new Date());
     }
 
     protected ConnectionModel(Parcel in) {

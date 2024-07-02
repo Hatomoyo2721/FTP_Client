@@ -21,6 +21,7 @@ import androidx.core.content.ContextCompat;
 
 import com.example.ftp_client.MainActivity;
 import com.example.ftp_client.R;
+import com.example.ftp_client.ui.utils.SharedPreferencesUtil;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -114,6 +115,7 @@ public class LoginActivity extends AppCompatActivity {
                         Log.d("LoginActivity", "User found: " + userStorage);
                         if (userStorage != null && userStorage.password.equals(password)) {
                             Log.d("LoginActivity", "Password matches");
+                            SharedPreferencesUtil.saveEmail(LoginActivity.this, email);
                             Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                             intent.putExtra("email", email);
                             startActivity(intent);
