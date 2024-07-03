@@ -46,7 +46,7 @@ public class FileTransferHelper extends Fragment {
 
     private static final int PICK_FILE_REQUEST_CODE = 1;
     private static final long MAX_FILE_SIZE = 2L * 1024 * 1024 * 1024; // 2GB
-    private static final int BUFFER_SIZE = 8192;
+    private static final int BUFFER_SIZE = 4096;
     private Uri selectedFileUri;
 
     private Button buttonSendFile;
@@ -177,6 +177,7 @@ public class FileTransferHelper extends Fragment {
         new SendFileTask().execute(selectedFileUri);
     }
 
+    @SuppressLint("StaticFieldLeak")
     private class SendFileTask extends AsyncTask<Uri, Void, String> {
         @Override
         protected String doInBackground(Uri... uris) {
@@ -316,6 +317,7 @@ public class FileTransferHelper extends Fragment {
                 e.printStackTrace();
                 if (isAdded()) {
                     requireActivity().runOnUiThread(() -> textViewStatus.setText("Error disconnecting: " + e.getMessage()));
+                    handleServerShutdown();
                 }
             }
         }).start();
