@@ -16,6 +16,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -24,6 +25,7 @@ import androidx.fragment.app.Fragment;
 
 import com.example.ftp_client.R;
 import com.example.ftp_client.ui.activity.HistoryItem;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
@@ -49,11 +51,12 @@ public class FileTransferHelper extends Fragment {
     private static final int BUFFER_SIZE = 4096;
     private Uri selectedFileUri;
 
-    private Button buttonSendFile;
-    private Button buttonSelectFile;
-    private Button buttonReloadServer;
-    private Button buttonDisconnect;
+    private FloatingActionButton fabSendFile;
+    private FloatingActionButton fabSelectFile;
+    private FloatingActionButton fabReloadServer;
+    private FloatingActionButton fabDisconnect;
     private TextView textViewStatus;
+    private ProgressBar progressBarReload;
 
     private String serverIP;
     private int serverPort;
@@ -78,7 +81,7 @@ public class FileTransferHelper extends Fragment {
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.fragment_file_transfer, container, false);
+        View view = inflater.inflate(R.layout.file_transfer_layout, container, false);
 
         setHasOptionsMenu(true);
 
@@ -89,18 +92,19 @@ public class FileTransferHelper extends Fragment {
     }
 
     private void initializeViews(View view) {
-        buttonSendFile = view.findViewById(R.id.buttonSendFile);
-        buttonSelectFile = view.findViewById(R.id.buttonSelectFile);
-        buttonReloadServer = view.findViewById(R.id.buttonReloadServer);
-        buttonDisconnect = view.findViewById(R.id.buttonDisconnect);
+        fabSendFile = view.findViewById(R.id.fabSendFile);
+        fabSelectFile = view.findViewById(R.id.fabSelectFile);
+        fabReloadServer = view.findViewById(R.id.fabReloadServer);
+        fabDisconnect = view.findViewById(R.id.fabDisconnect);
         textViewStatus = view.findViewById(R.id.textViewStatus);
+        progressBarReload = view.findViewById(R.id.progressBarReload);
     }
 
     private void setButtonClickListeners() {
-        buttonSendFile.setOnClickListener(v -> sendFile());
-        buttonSelectFile.setOnClickListener(v -> selectFile());
-        buttonReloadServer.setOnClickListener(v -> reloadServer());
-        buttonDisconnect.setOnClickListener(v -> disconnect());
+        fabSendFile.setOnClickListener(v -> sendFile());
+        fabSelectFile.setOnClickListener(v -> selectFile());
+        fabReloadServer.setOnClickListener(v -> reloadServer());
+        fabDisconnect.setOnClickListener(v -> disconnect());
     }
 
     private void saveSentFileDetails(String ipAddress, String fileName, Uri fileUri) {
@@ -155,6 +159,8 @@ public class FileTransferHelper extends Fragment {
             }
             return;
         }
+
+        progressBarReload.setVisibility(View.VISIBLE);
 
         try {
             long fileSize = getFileSize(selectedFileUri);

@@ -255,7 +255,7 @@ public class AddConnectionFragment extends Fragment {
         Set<String> usernamesForIp = ipUsernameMap.get(ipAddress);
 
         if (usernamesForIp != null) {
-            if (usernamesForIp.size() >= 2 && !usernamesForIp.contains(username)) {
+            if (usernamesForIp.size() >= 5 && !usernamesForIp.contains(username)) {
                 showAlert("This IP address already has two connections with different usernames.");
                 return false;
             }

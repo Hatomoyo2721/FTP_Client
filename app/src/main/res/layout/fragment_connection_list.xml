@@ -45,7 +45,7 @@
             android:layout_centerInParent="true"
             android:text="No Connections"
             android:textColor="@android:color/black"
-            android:textSize="18sp"
+            android:textSize="14sp"
             android:visibility="gone" />
 
         <!-- Progress Bar and Loading TextView -->
