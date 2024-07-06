@@ -72,7 +72,7 @@ public class BottomSheetConnectionActions extends BottomSheetDialogFragment {
                 textViewIP.setText("IP Address: " + connection.getIpAddress());
                 textViewPort.setText("Port: " + connection.getPort());
                 textViewUsername.setText("Username: " + connection.getUsername());
-                textViewPassword.setText("Password: " + connection.getPassword());
+                textViewPassword.setText("Password: **************************");
 
                 propertiesLayout.setVisibility(View.VISIBLE);
             }
