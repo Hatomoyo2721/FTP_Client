@@ -94,10 +94,8 @@ public class FileTransferHelper extends Fragment {
         View view = inflater.inflate(R.layout.file_transfer_layout, container, false);
 
         setHasOptionsMenu(true);
-
         initializeViews(view);
         setButtonClickListeners();
-
         nameDirectory.setText(username);
 
         return view;
@@ -169,10 +167,8 @@ public class FileTransferHelper extends Fragment {
         editor.apply();
     }
 
-    //==========================================================================================================================
+    //===========================//
     /* Send file to Server */
-
-    @SuppressLint("SetTextI18n")
     private void sendFile() {
         if (serverIP == null || selectedFileUri == null) {
             runOnUiThread(() -> textViewStatus.setText("No connection to server or file not selected"));
@@ -213,7 +209,6 @@ public class FileTransferHelper extends Fragment {
                 // Send file type and file name to server
                 outputStream.writeUTF("FILE");
                 outputStream.writeUTF(fileName);
-
                 // Send file size
                 outputStream.writeLong(getFileSize(fileUri));
 
@@ -246,6 +241,8 @@ public class FileTransferHelper extends Fragment {
         }
     }
 
+    //===========================//
+    /* Handle Server shut down */
     private void handleServerShutdown() {
         if (isAdded()) {
             runOnUiThread(() -> {
@@ -283,22 +280,15 @@ public class FileTransferHelper extends Fragment {
         }
     }
 
-    //==========================================================================================================================
+    //===========================//
     /* Handle with Directory */
-
     @SuppressLint("StaticFieldLeak")
     private class LoadDirectoryTask extends AsyncTask<String, Void, List<String>> {
-        @SuppressLint("SetTextI18n")
         @Override
         protected void onPreExecute() {
             super.onPreExecute();
             progressBarReload.setVisibility(View.VISIBLE);
             textViewStatus.setText("Loading directory...");
-            fabDisconnect.setClickable(false);
-            fabOpenDrawer.setClickable(false);
-            fabReloadServer.setClickable(false);
-            fabSelectFile.setClickable(false);
-            fabSendFile.setClickable(false);
         }
 
         @Override
@@ -321,11 +311,9 @@ public class FileTransferHelper extends Fragment {
                 e.printStackTrace();
                 publishProgress(); // Notify UI thread about error
             }
-
             return files;
         }
 
-        @SuppressLint("SetTextI18n")
         @Override
         protected void onProgressUpdate(Void... values) {
             super.onProgressUpdate(values);
@@ -333,7 +321,6 @@ public class FileTransferHelper extends Fragment {
             textViewStatus.setText("Error loading directory");
         }
 
-        @SuppressLint("SetTextI18n")
         @Override
         protected void onPostExecute(List<String> files) {
             super.onPostExecute(files);
@@ -370,7 +357,7 @@ public class FileTransferHelper extends Fragment {
         return fileModels;
     }
 
-    //==========================================================================================================================
+    //===========================//
     /* Helper functions */
 
     private void selectFile() {
@@ -379,7 +366,6 @@ public class FileTransferHelper extends Fragment {
         startActivityForResult(intent, PICK_FILE_REQUEST_CODE);
     }
 
-    @SuppressLint("SetTextI18n")
     @Override
     public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -423,38 +409,60 @@ public class FileTransferHelper extends Fragment {
         return 0;
     }
 
-    @SuppressLint("SetTextI18n")
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        if (countdownHandler != null && countdownRunnable != null) {
+            countdownHandler.removeCallbacks(countdownRunnable);
+        }
+        if (serverShutdownDialog != null && serverShutdownDialog.isShowing()) {
+            serverShutdownDialog.dismiss();
+        }
+    }
+
     private void reloadServer() {
         runOnUiThread(() -> {
             progressBarReload.setVisibility(View.VISIBLE);
             textViewStatus.setText("Waiting for server to reload, please wait a moment...");
-            fabDisconnect.setClickable(false);
-            fabOpenDrawer.setClickable(false);
-            fabReloadServer.setClickable(false);
-            fabSelectFile.setClickable(false);
-            fabSendFile.setClickable(false);
-            nameDirectory.setClickable(false);
+            disableButtons();
         });
 
-        new Thread(() -> {
-            try (Socket socket = new Socket(serverIP, serverPort)) {
-                runOnUiThread(() -> {
-                    progressBarReload.setVisibility(View.GONE);
-                    textViewStatus.setText("Server is running.");
-                });
-
-            } catch (IOException e) {
-                e.printStackTrace();
-                runOnUiThread(() -> {
-                    progressBarReload.setVisibility(View.GONE);
-                    textViewStatus.setText("Server has shut down: " + e.getMessage());
-                    handleServerShutdown();
-                });
-            }
-        }).start();
+        new ReloadServerTask().execute();
     }
 
-    @SuppressLint("SetTextI18n")
+    @SuppressLint("StaticFieldLeak")
+    private class ReloadServerTask extends AsyncTask<Void, Void, Boolean> {
+        @Override
+        protected Boolean doInBackground(Void... voids) {
+            try (Socket socket = new Socket(serverIP, serverPort);
+            DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream()))
+            {
+                outputStream.writeUTF("RELOAD_SERVER");
+                outputStream.flush();
+                return true;
+            } catch (IOException e) {
+                e.printStackTrace();
+                return false;
+            }
+        }
+
+        @Override
+        protected void onPostExecute(Boolean success) {
+            if (isAdded()) {
+                runOnUiThread(() -> {
+                    progressBarReload.setVisibility(View.GONE);
+                    if (success) {
+                        textViewStatus.setText("Server is running.");
+                    } else {
+                        textViewStatus.setText("Server has shut down.");
+                        handleServerShutdown();
+                    }
+                    enableButtons();
+                });
+            }
+        }
+    }
+
     private void disconnect() {
         if (serverIP == null) {
             runOnUiThread(() ->
@@ -462,46 +470,64 @@ public class FileTransferHelper extends Fragment {
             return;
         }
 
-        new Thread(() -> {
-            try (Socket socket = new Socket(serverIP, serverPort);
-                 DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream())) {
-
-                outputStream.writeUTF("DISCONNECT");
-                outputStream.flush();
-
-                runOnUiThread(() -> {
-                    progressBarReload.setVisibility(View.GONE);
-                    textViewStatus.setText("Disconnected from server");
-                    new Handler().postDelayed(() -> requireActivity().getSupportFragmentManager().popBackStack(), 2000);
-                });
-            } catch (IOException e) {
-                e.printStackTrace();
-                runOnUiThread(() -> {
-                    progressBarReload.setVisibility(View.GONE);
-                    textViewStatus.setText("Error disconnecting: " + e.getMessage());
-                    handleServerShutdown();
-                });
-            }
-        }).start();
+        new DisconnectTask().execute();
     }
 
+    @SuppressLint("StaticFieldLeak")
+    private class DisconnectTask extends AsyncTask<Void, Void, Boolean> {
+        @Override
+        protected Boolean doInBackground(Void... voids) {
+            try (Socket socket = new Socket(serverIP, serverPort);
+                 DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream())) {
+                outputStream.writeUTF("DISCONNECT");
+                outputStream.flush();
+                return true;
+            } catch (IOException e) {
+                e.printStackTrace();
+                return false;
+            }
+        }
+
+        @Override
+        protected void onPostExecute(Boolean success) {
+            if (isAdded()) {
+                runOnUiThread(() -> {
+                    if (success) {
+                        textViewStatus.setText("Disconnected from server in 5 seconds");
+                        new Handler().postDelayed(() -> requireActivity().getSupportFragmentManager().popBackStack(), 5000);
+                        disableButtons();
+                    } else {
+                        textViewStatus.setText("Error disconnecting from server. Go back in 5 seconds");
+                        new Handler().postDelayed(() -> requireActivity().getSupportFragmentManager().popBackStack(), 5000);
+                        disableButtons();
+                    }
+                });
+            }
+        }
+    }
+    private void disableButtons() {
+        runOnUiThread(() -> {
+            fabDisconnect.setClickable(false);
+            fabOpenDrawer.setClickable(false);
+            fabReloadServer.setClickable(false);
+            fabSelectFile.setClickable(false);
+            fabSendFile.setClickable(false);
+            nameDirectory.setClickable(false);
+        });
+    }
+    private void enableButtons() {
+        runOnUiThread(() -> {
+            fabDisconnect.setClickable(true);
+            fabOpenDrawer.setClickable(true);
+            fabReloadServer.setClickable(true);
+            fabSelectFile.setClickable(true);
+            fabSendFile.setClickable(true);
+            nameDirectory.setClickable(true);
+        });
+    }
     private void runOnUiThread(Runnable action) {
         if (isAdded() && getActivity() != null) {
             getActivity().runOnUiThread(action);
-        }
-    }
-
-    //==========================================================================================================================
-
-    @Override
-    public void onDestroyView() {
-        super.onDestroyView();
-        // Clean up resources, listeners, and handlers
-        if (countdownHandler != null && countdownRunnable != null) {
-            countdownHandler.removeCallbacks(countdownRunnable);
-        }
-        if (serverShutdownDialog != null && serverShutdownDialog.isShowing()) {
-            serverShutdownDialog.dismiss();
         }
     }
 }

@@ -9,6 +9,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.ftp_client.R;
@@ -58,10 +59,11 @@ public class FileListAdapter extends RecyclerView.Adapter<FileListAdapter.FileVi
         }
     }
 
-    @SuppressLint("NotifyDataSetChanged")
     public void updateFileList(List<FileModel> newFileList) {
-        this.fileList = newFileList != null ? newFileList : new ArrayList<>();
-        notifyDataSetChanged();
+        DiffUtil.DiffResult diffResult = DiffUtil.calculateDiff(new FileDiffCallback(this.fileList, newFileList));
+        this.fileList.clear();
+        this.fileList.addAll(newFileList);
+        diffResult.dispatchUpdatesTo(this);
     }
-}
 
+}
