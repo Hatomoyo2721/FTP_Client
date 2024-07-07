@@ -90,7 +90,6 @@ public class VerifyPhone extends AppCompatActivity {
 
         mCallbacks = new PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
 
-            @SuppressLint("SetTextI18n")
             @Override
             public void onCodeSent(@NonNull String s, @NonNull PhoneAuthProvider.ForceResendingToken forceResendingToken) {
                 super.onCodeSent(s, forceResendingToken);
@@ -101,7 +100,6 @@ public class VerifyPhone extends AppCompatActivity {
                 resendOTPText.setText("You can regenerate the OTP after 60 seconds.");
             }
 
-            @SuppressLint("SetTextI18n")
             @Override
             public void onCodeAutoRetrievalTimeOut(@NonNull String s) {
                 super.onCodeAutoRetrievalTimeOut(s);
@@ -142,24 +140,11 @@ public class VerifyPhone extends AppCompatActivity {
     }
 
     private void sendOTP(String phoneNumber) {
-        PhoneAuthProvider.getInstance().verifyPhoneNumber(
-                phoneNumber,
-                60,
-                TimeUnit.SECONDS,
-                this,
-                mCallbacks
-        );
+        PhoneAuthProvider.getInstance().verifyPhoneNumber(phoneNumber, 60, TimeUnit.SECONDS, this, mCallbacks);
     }
 
     private void resendOTP(String phoneNumber) {
-        PhoneAuthProvider.getInstance().verifyPhoneNumber(
-                phoneNumber,
-                60,
-                TimeUnit.SECONDS,
-                this,
-                mCallbacks,
-                token
-        );
+        PhoneAuthProvider.getInstance().verifyPhoneNumber(phoneNumber, 60, TimeUnit.SECONDS, this, mCallbacks, token);
     }
 
     private void validateOtpFields() {
@@ -217,13 +202,11 @@ public class VerifyPhone extends AppCompatActivity {
     private void startCountdownTimer() {
         countDownTimer = new CountDownTimer(60000, 1000) {
 
-            @SuppressLint("SetTextI18n")
             public void onTick(long millisUntilFinished) {
                 long seconds = millisUntilFinished / 1000;
                 resendOTPText.setText("You can regenerate the OTP in " + seconds + " seconds.");
             }
 
-            @SuppressLint("SetTextI18n")
             public void onFinish() {
                 resendOTPText.setText("You can regenerate the OTP now.");
                 resendOTP.setVisibility(View.VISIBLE);

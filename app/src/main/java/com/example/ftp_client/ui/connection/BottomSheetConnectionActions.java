@@ -59,7 +59,6 @@ public class BottomSheetConnectionActions extends BottomSheetDialogFragment {
         return view;
     }
 
-    @SuppressLint("SetTextI18n")
     private void showProperties() {
         if (connection != null) {
             View propertiesLayout = requireView().findViewById(R.id.layoutProperties);
@@ -72,7 +71,7 @@ public class BottomSheetConnectionActions extends BottomSheetDialogFragment {
                 textViewIP.setText("IP Address: " + connection.getIpAddress());
                 textViewPort.setText("Port: " + connection.getPort());
                 textViewUsername.setText("Username: " + connection.getUsername());
-                textViewPassword.setText("Password: **************************");
+                textViewPassword.setText("Password: ************************");
 
                 propertiesLayout.setVisibility(View.VISIBLE);
             }
@@ -87,5 +86,4 @@ public class BottomSheetConnectionActions extends BottomSheetDialogFragment {
         void onConnectToServer(ConnectionModel connection);
         void onDeleteConnection(ConnectionModel connection);
     }
-
 }

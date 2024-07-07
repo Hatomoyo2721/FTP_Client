@@ -59,10 +59,6 @@ public class ConnectionAdapter extends RecyclerView.Adapter<ConnectionAdapter.Co
                     listener.onConnectionClick(connection);
                 }
             });
-
-            imageButtonActions.setOnClickListener(v -> {
-                // No actions needed for now
-            });
         }
 
         public void bind(ConnectionModel connection) {
