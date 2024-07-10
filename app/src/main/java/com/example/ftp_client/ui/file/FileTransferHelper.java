@@ -1,5 +1,7 @@
 package com.example.ftp_client.ui.file;
 
+import static android.app.Activity.RESULT_OK;
+
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -51,6 +53,7 @@ public class FileTransferHelper extends Fragment {
     private static final int PICK_FILE_REQUEST_CODE = 1;
     private static final long MAX_FILE_SIZE = 2L * 1024 * 1024 * 1024; // 2GB
     private static final int BUFFER_SIZE = 4096;
+
     private Uri selectedFileUri;
 
     private FloatingActionButton fabSendFile;
@@ -92,12 +95,10 @@ public class FileTransferHelper extends Fragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.file_transfer_layout, container, false);
-
         setHasOptionsMenu(true);
         initializeViews(view);
         setButtonClickListeners();
         nameDirectory.setText(username);
-
         return view;
     }
 
@@ -111,9 +112,9 @@ public class FileTransferHelper extends Fragment {
 
         userDirectory = view.findViewById(R.id.user_directory);
         nameDirectory = view.findViewById(R.id.name_directory);
-
         textViewStatus = view.findViewById(R.id.textViewStatus);
         progressBarReload = view.findViewById(R.id.progressBarReload);
+        fileListAdapter = new FileListAdapter(requireContext(), new ArrayList<>());
     }
 
     private void setButtonClickListeners() {
@@ -122,9 +123,9 @@ public class FileTransferHelper extends Fragment {
         fabReloadServer.setOnClickListener(v -> reloadServer());
         fabDisconnect.setOnClickListener(v -> disconnect());
         fabOpenDrawer.setOnClickListener(v -> toggleNavigationDrawer());
-
         nameDirectory.setOnClickListener(v -> loadDirectory(username));
     }
+
 
     private void toggleNavigationDrawer() {
         fabNavigationDrawer.setVisibility(fabNavigationDrawer.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE);
@@ -133,40 +134,32 @@ public class FileTransferHelper extends Fragment {
     private void saveSentFileDetails(String ipAddress, String fileName, Uri fileUri) {
         SharedPreferences sharedPreferences = requireContext().getSharedPreferences("MessageHistory", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPreferences.edit();
-
         Gson gson = new Gson();
         String json = sharedPreferences.getString("messages", "");
-
         List<HistoryItem> historyItems;
 
         if (json.isEmpty()) {
             historyItems = new ArrayList<>();
         } else {
             try {
-                // Check if JSON is an array
-                JsonElement jsonElement = JsonParser.parseString(json);
+                JsonElement jsonElement = JsonParser.parseString(json); // Check if JSON is an array
                 if (jsonElement.isJsonArray()) {
                     Type type = new TypeToken<ArrayList<HistoryItem>>() {
                     }.getType();
                     historyItems = gson.fromJson(json, type);
                 } else {
-                    // Handle the case where JSON is not an array
-                    historyItems = new ArrayList<>();
+                    historyItems = new ArrayList<>(); // Handle the case where JSON is not an array
                 }
             } catch (JsonSyntaxException e) {
-                // Handle JSON parsing error
-                historyItems = new ArrayList<>();
+                historyItems = new ArrayList<>(); // Handle JSON parsing error
             }
         }
-
         String timestamp = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(new Date());
         HistoryItem newHistoryItem = new HistoryItem(ipAddress, fileName, fileUri.toString(), timestamp);
         historyItems.add(newHistoryItem);
-
         editor.putString("messages", gson.toJson(historyItems));
         editor.apply();
     }
-
     //===========================//
     /* Send file to Server */
     private void sendFile() {
@@ -174,9 +167,7 @@ public class FileTransferHelper extends Fragment {
             runOnUiThread(() -> textViewStatus.setText("No connection to server or file not selected"));
             return;
         }
-
         runOnUiThread(() -> progressBarReload.setVisibility(View.VISIBLE));
-
         try {
             long fileSize = getFileSize(selectedFileUri);
             if (fileSize > MAX_FILE_SIZE) {
@@ -188,7 +179,6 @@ public class FileTransferHelper extends Fragment {
             runOnUiThread(() -> textViewStatus.setText("Error reading file: " + e.getMessage()));
             return;
         }
-
         new SendFileTask().execute(selectedFileUri);
     }
 
@@ -205,13 +195,9 @@ public class FileTransferHelper extends Fragment {
                 if (fileName == null) {
                     fileName = "Untitled";
                 }
-
-                // Send file type and file name to server
-                outputStream.writeUTF("FILE");
+                outputStream.writeUTF("SEND_FILE");
                 outputStream.writeUTF(fileName);
-                // Send file size
-                outputStream.writeLong(getFileSize(fileUri));
-
+                outputStream.writeLong(getFileSize(fileUri)); // Send file size
                 // Send file content
                 byte[] buffer = new byte[BUFFER_SIZE];
                 int bytesRead;
@@ -219,17 +205,14 @@ public class FileTransferHelper extends Fragment {
                 while ((bytesRead = Objects.requireNonNull(fileInputStream).read(buffer)) != -1) {
                     outputStream.write(buffer, 0, bytesRead);
                 }
-
                 // Save for history view
                 saveSentFileDetails(serverIP, fileName, fileUri);
-
                 return "File sent: " + fileName;
             } catch (IOException e) {
                 e.printStackTrace();
                 return "Error sending file: " + e.getMessage();
             }
         }
-
         @Override
         protected void onPostExecute(String result) {
             if (isAdded()) {
@@ -240,7 +223,6 @@ public class FileTransferHelper extends Fragment {
             }
         }
     }
-
     //===========================//
     /* Handle Server shut down */
     private void handleServerShutdown() {
@@ -258,11 +240,9 @@ public class FileTransferHelper extends Fragment {
 
                 serverShutdownDialog = builder.create();
                 serverShutdownDialog.show();
-
                 countdownHandler = new Handler();
                 countdownRunnable = new Runnable() {
                     int secondsLeft = 5;
-
                     @Override
                     public void run() {
                         if (secondsLeft > 0) {
@@ -279,86 +259,70 @@ public class FileTransferHelper extends Fragment {
             });
         }
     }
-
     //===========================//
     /* Handle with Directory */
     @SuppressLint("StaticFieldLeak")
-    private class LoadDirectoryTask extends AsyncTask<String, Void, List<String>> {
+    private class LoadDirectoryTask extends AsyncTask<Void, Void, List<FileModel>> {
+        @Override
+        protected List<FileModel> doInBackground(Void... voids) {
+            List<FileModel> fileItems = new ArrayList<>();
+
+            try (Socket socket = new Socket(serverIP, serverPort);
+                 BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                 DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream())) {
+
+                outputStream.writeUTF("LOAD_DIRECTORY"); // Request directory content
+                String responseLine;
+                while ((responseLine = reader.readLine()) != null) {
+                    if (responseLine.startsWith("FILE") || responseLine.startsWith("DIR")) {
+                        fileItems.add(FileModel.fromString(responseLine));
+                    }
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+                runOnUiThread(() -> textViewStatus.setText("Error loading directory"));
+            }
+            return fileItems;
+        }
+
         @Override
         protected void onPreExecute() {
             super.onPreExecute();
-            progressBarReload.setVisibility(View.VISIBLE);
-            textViewStatus.setText("Loading directory...");
+            runOnUiThread(() -> {
+                progressBarReload.setVisibility(View.VISIBLE);
+                textViewStatus.setText("Loading directory...");
+            });
         }
 
         @Override
-        protected List<String> doInBackground(String... params) {
-            String username = params[0];
-            List<String> files = new ArrayList<>();
+        protected void onPostExecute(List<FileModel> fileItems) {
+            progressBarReload.setVisibility(View.GONE);
+            if (fileItems.isEmpty()) {
+                textViewStatus.setText("Directory is empty or failed to load");
+            } else {
+                textViewStatus.setText("Directory loaded successfully");
 
-            try (Socket socket = new Socket(serverIP, serverPort);
-                 DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream());
-                 BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
-
-                outputStream.writeUTF("LOAD_DIRECTORY");
-                outputStream.writeUTF(username);
-                outputStream.flush();
-
-                String response = reader.readLine();
-                files = new Gson().fromJson(response, new TypeToken<List<String>>() {}.getType());
-
-            } catch (IOException e) {
-                e.printStackTrace();
-                publishProgress(); // Notify UI thread about error
+                if (fileListAdapter == null) {
+                    fileListAdapter = new FileListAdapter(requireContext(), new ArrayList<>());
+                }
+                fileListAdapter.updateFileList(fileItems);
             }
-            return files;
-        }
-
-        @Override
-        protected void onProgressUpdate(Void... values) {
-            super.onProgressUpdate(values);
-            progressBarReload.setVisibility(View.GONE);
-            textViewStatus.setText("Error loading directory");
-        }
-
-        @Override
-        protected void onPostExecute(List<String> files) {
-            super.onPostExecute(files);
-            progressBarReload.setVisibility(View.GONE);
-            textViewStatus.setText("Directory loaded: " + username);
-
-            // Update fileListAdapter with new files
-            fileListAdapter.updateFileList(convertToFileModels(files)); // Assuming you have a method to convert strings to FileModel
-
-            // Transition to FileListFragment and pass the file list
-            Bundle args = new Bundle();
-            args.putString("fileList", new Gson().toJson(files));
-
-            FileListFragment fileListFragment = new FileListFragment();
-            fileListFragment.setArguments(args);
-
-            requireActivity().getSupportFragmentManager()
-                    .beginTransaction()
-                    .replace(R.id.fragment_container, fileListFragment)
-                    .addToBackStack(null)
-                    .commit();
         }
     }
-
     private void loadDirectory(String username) {
-        new LoadDirectoryTask().execute(username);
+        new LoadDirectoryTask().execute();
     }
-
-    private List<FileModel> convertToFileModels(List<String> files) {
-        List<FileModel> fileModels = new ArrayList<>();
-        for (String file : files) {
-            fileModels.add(new FileModel(file, FileModel.TYPE_FILE));
-        }
-        return fileModels;
-    }
-
     //===========================//
     /* Helper functions */
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == PICK_FILE_REQUEST_CODE && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            selectedFileUri = data.getData();
+            textViewStatus.setText(String.format("File selected: %s", getFileName(selectedFileUri)));
+        }
+    }
 
     private void selectFile() {
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
@@ -366,47 +330,25 @@ public class FileTransferHelper extends Fragment {
         startActivityForResult(intent, PICK_FILE_REQUEST_CODE);
     }
 
-    @Override
-    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == PICK_FILE_REQUEST_CODE && resultCode == Activity.RESULT_OK && data != null) {
-            selectedFileUri = data.getData();
-            String fileName = getFileName(Objects.requireNonNull(selectedFileUri));
-            if (selectedFileUri != null) {
-                textViewStatus.setText("Selected file: " + fileName);
-            }
-        }
-    }
-
     private String getFileName(Uri uri) {
+        String fileName = null;
         Cursor cursor = requireContext().getContentResolver().query(
                 uri, null, null, null, null);
         if (cursor != null && cursor.moveToFirst()) {
-            int nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
-            if (nameIndex != -1) {
-                String fileName = cursor.getString(nameIndex);
-                cursor.close();
-                return fileName;
-            }
+            int displayNameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+            fileName = cursor.getString(displayNameIndex);
             cursor.close();
         }
-        return null;
+        return fileName;
     }
 
-    private long getFileSize(Uri uri) throws IOException {
-        try (Cursor cursor = requireContext().getContentResolver().query(
-                uri, null, null, null, null)) {
-            if (cursor != null && cursor.moveToFirst()) {
-                int sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE);
-                if (sizeIndex != -1) {
-                    long size = cursor.getLong(sizeIndex);
-                    cursor.close();
-                    return size;
-                }
-                cursor.close();
-            }
+    private long getFileSize(Uri fileUri) throws IOException {
+        InputStream inputStream = requireContext().getContentResolver().openInputStream(fileUri);
+        long fileSize = inputStream != null ? inputStream.available() : 0;
+        if (inputStream != null) {
+            inputStream.close();
         }
-        return 0;
+        return fileSize;
     }
 
     @Override
@@ -434,15 +376,24 @@ public class FileTransferHelper extends Fragment {
     private class ReloadServerTask extends AsyncTask<Void, Void, Boolean> {
         @Override
         protected Boolean doInBackground(Void... voids) {
-            try (Socket socket = new Socket(serverIP, serverPort);
-            DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream()))
-            {
+            Socket socket = null;
+            try {
+                socket = new Socket(serverIP, serverPort);
+                DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream());
                 outputStream.writeUTF("RELOAD_SERVER");
                 outputStream.flush();
                 return true;
             } catch (IOException e) {
                 e.printStackTrace();
                 return false;
+            } finally {
+                try {
+                    if (socket != null) {
+                        socket.close();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         }
 
@@ -464,47 +415,9 @@ public class FileTransferHelper extends Fragment {
     }
 
     private void disconnect() {
-        if (serverIP == null) {
-            runOnUiThread(() ->
-                    textViewStatus.setText("No server connection to disconnect from"));
-            return;
-        }
-
-        new DisconnectTask().execute();
+        requireActivity().getSupportFragmentManager().popBackStack();
     }
 
-    @SuppressLint("StaticFieldLeak")
-    private class DisconnectTask extends AsyncTask<Void, Void, Boolean> {
-        @Override
-        protected Boolean doInBackground(Void... voids) {
-            try (Socket socket = new Socket(serverIP, serverPort);
-                 DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream())) {
-                outputStream.writeUTF("DISCONNECT");
-                outputStream.flush();
-                return true;
-            } catch (IOException e) {
-                e.printStackTrace();
-                return false;
-            }
-        }
-
-        @Override
-        protected void onPostExecute(Boolean success) {
-            if (isAdded()) {
-                runOnUiThread(() -> {
-                    if (success) {
-                        textViewStatus.setText("Disconnected from server in 5 seconds");
-                        new Handler().postDelayed(() -> requireActivity().getSupportFragmentManager().popBackStack(), 5000);
-                        disableButtons();
-                    } else {
-                        textViewStatus.setText("Error disconnecting from server. Go back in 5 seconds");
-                        new Handler().postDelayed(() -> requireActivity().getSupportFragmentManager().popBackStack(), 5000);
-                        disableButtons();
-                    }
-                });
-            }
-        }
-    }
     private void disableButtons() {
         runOnUiThread(() -> {
             fabDisconnect.setClickable(false);
@@ -515,6 +428,7 @@ public class FileTransferHelper extends Fragment {
             nameDirectory.setClickable(false);
         });
     }
+
     private void enableButtons() {
         runOnUiThread(() -> {
             fabDisconnect.setClickable(true);
@@ -525,6 +439,7 @@ public class FileTransferHelper extends Fragment {
             nameDirectory.setClickable(true);
         });
     }
+
     private void runOnUiThread(Runnable action) {
         if (isAdded() && getActivity() != null) {
             getActivity().runOnUiThread(action);

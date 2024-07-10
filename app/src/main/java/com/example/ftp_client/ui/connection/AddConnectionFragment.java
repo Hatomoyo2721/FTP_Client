@@ -216,17 +216,14 @@ public class AddConnectionFragment extends Fragment {
             Toast.makeText(getActivity(),"Please fill in all fields", Toast.LENGTH_LONG).show();
             return false;
         }
-
         if (!isValidIPAddress(ipAddress)) {
             Toast.makeText(getActivity(),"Please enter a valid IP address", Toast.LENGTH_LONG).show();
             return false;
         }
-
         if (!isValidUsername(username)) {
             Toast.makeText(getActivity(), "Username can only contain letters, numbers, and underscores (_)", Toast.LENGTH_SHORT).show();
             return false;
         }
-
         return true;
     }
 
@@ -265,7 +262,6 @@ public class AddConnectionFragment extends Fragment {
                 return false;
             }
         }
-
         return true;
     }
 

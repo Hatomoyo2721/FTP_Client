@@ -15,6 +15,7 @@ import com.example.ftp_client.R;
 import com.example.ftp_client.ui.utils.SharedPreferencesUtil;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class HistoryActivity extends AppCompatActivity {
@@ -48,6 +49,7 @@ public class HistoryActivity extends AppCompatActivity {
         if (loadedHistoryItems != null) {
             historyItems.clear();
             historyItems.addAll(loadedHistoryItems);
+            Collections.reverse(historyItems);
             historyAdapter.notifyDataSetChanged();
         }
     }

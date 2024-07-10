@@ -12,8 +12,8 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.ftp_client.R;
-import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +40,7 @@ public class FileListFragment extends Fragment {
             fileList = new Gson().fromJson(jsonFileList, new TypeToken<List<FileModel>>() {}.getType());
         }
 
-        fileListAdapter = new FileListAdapter(fileList, requireContext());
+        fileListAdapter = new FileListAdapter(requireContext(), fileList);
         recyclerViewFiles.setAdapter(fileListAdapter);
 
         return view;
