@@ -35,6 +35,8 @@ import java.util.Set;
 
 public class AddConnectionFragment extends Fragment {
 
+    private final ThreadLocal<ProgressBar> loadingProgressBar = new ThreadLocal<>();
+    private final ThreadLocal<TextView> loadingTextView = new ThreadLocal<>();
     private EditText editTextIPAddress;
     private EditText editTextPort;
     private EditText editTextUsername;
@@ -44,9 +46,6 @@ public class AddConnectionFragment extends Fragment {
     private OnConnectionAddedListener listener;
     private Button buttonSave;
     private Button buttonBack;
-
-    private final ThreadLocal<ProgressBar> loadingProgressBar = new ThreadLocal<>();
-    private final ThreadLocal<TextView> loadingTextView = new ThreadLocal<>();
     private RelativeLayout loadingScreenLayout;
 
     @Nullable
@@ -102,11 +101,14 @@ public class AddConnectionFragment extends Fragment {
         try {
             _port = validatePort(port);
         } catch (NumberFormatException e) {
-            Toast.makeText(getActivity(),"Invalid port number", Toast.LENGTH_LONG).show();
+            Toast.makeText(getActivity(), "Invalid port number", Toast.LENGTH_LONG).show();
             return;
         }
 
         ArrayList<ConnectionModel> connectionList = SharedPreferencesUtil.loadConnectionList(requireContext());
+        if (connectionList == null) {
+            connectionList = new ArrayList<>();
+        }
         Map<String, Set<String>> ipUsernameMap = getIpUsernameMap(connectionList);
 
         if (!validateIpAndUsername(ipUsernameMap, ipAddress, username)) return;
@@ -141,6 +143,9 @@ public class AddConnectionFragment extends Fragment {
 
                         // Save the new connection to SharedPreferences only if connected successfully
                         ArrayList<ConnectionModel> connectionList = SharedPreferencesUtil.loadConnectionList(requireContext());
+                        if (connectionList == null) {
+                            connectionList = new ArrayList<>();
+                        }
                         connectionList.add(connection);
                         SharedPreferencesUtil.saveConnectionList(requireContext(), connectionList);
 
@@ -213,11 +218,11 @@ public class AddConnectionFragment extends Fragment {
 
     private boolean validateInputFields(String ipAddress, String portStr, String username, String password) {
         if (TextUtils.isEmpty(ipAddress) || TextUtils.isEmpty(portStr) || TextUtils.isEmpty(username) || TextUtils.isEmpty(password)) {
-            Toast.makeText(getActivity(),"Please fill in all fields", Toast.LENGTH_LONG).show();
+            Toast.makeText(getActivity(), "Please fill in all fields", Toast.LENGTH_LONG).show();
             return false;
         }
         if (!isValidIPAddress(ipAddress)) {
-            Toast.makeText(getActivity(),"Please enter a valid IP address", Toast.LENGTH_LONG).show();
+            Toast.makeText(getActivity(), "Please enter a valid IP address", Toast.LENGTH_LONG).show();
             return false;
         }
         if (!isValidUsername(username)) {

@@ -1,8 +1,10 @@
 package com.example.ftp_client.ui.file;
 
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -22,6 +24,7 @@ import com.example.ftp_client.R;
 import com.google.gson.Gson;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
@@ -75,15 +78,52 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
         bottomSheet.show(getFragmentManager(), bottomSheet.getTag());
     }
 
+    private static boolean isExternalStorageReadOnly() {
+        String extStorageState = Environment.getExternalStorageState();
+        if (Environment.MEDIA_MOUNTED_READ_ONLY.equals(extStorageState)) {
+            return true;
+        }
+        return false;
+    }
+
+    private static boolean isExternalStorageAvailable() {
+        String extStorageState = Environment.getExternalStorageState();
+        if (Environment.MEDIA_MOUNTED.equals(extStorageState)) {
+            return true;
+        }
+        return false;
+    }
+
     private void openFile(FileModel file) {
         if (file.getPath() == null || file.getPath().isEmpty()) {
             Log.e("FileListFragment", "File path is null or empty.");
             return;
         }
 
-        File fileToOpen = new File(file.getPath());
+        Context context = requireContext();
 
-        String mimeType = getMimeType(fileToOpen.getName());
+        if (!isExternalStorageAvailable() || isExternalStorageReadOnly()) {
+            Log.e("FileListFragment", "External storage is not available or read-only.");
+            Toast.makeText(context, "", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String directory = Environment.getExternalStorageDirectory().getAbsolutePath() + "/ftp-client";
+        File fileToOpen = new File(directory, file.getPath());
+        if (!fileToOpen.getParentFile().exists()) {
+            fileToOpen.getParentFile().mkdirs();
+        }
+        String mimeType = getMimeType(file.getName());
+
+        try {
+            fileToOpen.createNewFile();
+        } catch (IOException e) {
+            e.printStackTrace();
+            Log.e("FileListFragment", "Failed to create file.");
+            Toast.makeText(requireContext(), "Failed to open file.",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         Uri fileUri = FileProvider.getUriForFile(requireContext(),
                 requireContext().getApplicationContext().getPackageName() + ".provider",
