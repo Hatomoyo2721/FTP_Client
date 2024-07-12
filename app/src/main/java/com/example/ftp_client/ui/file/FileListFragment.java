@@ -83,16 +83,18 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
 
         File fileToOpen = new File(file.getPath());
 
-        // Use FileProvider to get a content URI
+        String mimeType = getMimeType(fileToOpen.getName());
+
         Uri fileUri = FileProvider.getUriForFile(requireContext(),
-                "com.example.ftp_client.fileprovider", fileToOpen);
+                requireContext().getApplicationContext().getPackageName() + ".provider",
+                fileToOpen);
 
-        String mimeType = getMimeType(file.getName());
-
+        // Intent to open the file
         Intent intent = new Intent(Intent.ACTION_VIEW);
         intent.setDataAndType(fileUri, mimeType);
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
+        // Create chooser to handle the intent
         Intent chooserIntent = Intent.createChooser(intent, "Open file with...");
 
         if (intent.resolveActivity(requireActivity().getPackageManager()) != null) {

@@ -37,7 +37,7 @@ public class BottomSheetConnectionActions extends BottomSheetDialogFragment {
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.bottom_sheet_action_connection_fragment, container, false);
+        View view = inflater.inflate(R.layout.bottom_sheet_connection_action_fragment, container, false);
 
         view.findViewById(R.id.buttonConnect).setOnClickListener(v -> {
             if (listener != null) {

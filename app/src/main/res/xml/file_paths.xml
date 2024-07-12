@@ -1,16 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- External storage -->
-    <external-path
-        name="external_files"
-        path="." />
+    <files-path name="files" path="." />
+    <cache-path name="cache" path="." />
+    <external-files-path name="external_files" path="." />
+    <external-cache-path name="external_cache" path="." />
 
-    <!-- For specific directories -->
-    <files-path
-        name="app_files"
-        path="." />
-
-    <cache-path
-        name="app_cache"
-        path="." />
+    <files-path name="my_files" path="C:\Users\HP PAVILION\Desktop\LapTrinhMang\LyThuyet\FTP_Server\HandlerServer\Main\server_python\users_directories\aaa\" />
 </paths>

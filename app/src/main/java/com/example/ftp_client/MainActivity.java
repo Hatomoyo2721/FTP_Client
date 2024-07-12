@@ -40,7 +40,6 @@ public class MainActivity extends AppCompatActivity implements AddConnectionFrag
             }
         });
 
-        // Load the ConnectionListFragment initially
         if (savedInstanceState == null) {
             switchToFragment(new ConnectionListFragment(), CONNECTION_LIST_FRAGMENT_TAG);
         }

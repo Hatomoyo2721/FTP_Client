@@ -68,7 +68,7 @@ public class LoginActivity extends AppCompatActivity {
 
         btnLogin.setOnClickListener(v -> loginUser());
 
-        btnShowPassword.setOnClickListener(v ->  togglePasswordVisibility());
+        btnShowPassword.setOnClickListener(v -> togglePasswordVisibility());
 
         checkAndRequestPermissions();
     }
@@ -170,18 +170,28 @@ public class LoginActivity extends AppCompatActivity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == PERMISSION_REQUEST_CODE) {
             boolean allGranted = true;
-            for (int result : grantResults) {
-                if (result != PackageManager.PERMISSION_GRANTED) {
+            boolean showPermissionRationale = false;
+            for (int i = 0; i < permissions.length; i++) {
+                String permission = permissions[i];
+                int grantResult = grantResults[i];
+                if (grantResult != PackageManager.PERMISSION_GRANTED) {
                     allGranted = false;
-                    break;
+                    if (ActivityCompat.shouldShowRequestPermissionRationale(this, permission)) {
+                        showPermissionRationale = true;
+                    }
                 }
             }
             if (!allGranted) {
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                builder.setTitle("Permission Required")
-                        .setMessage("All permissions are required to use this app. Please grant all permissions in order to proceed.")
-                        .setPositiveButton("OK", (dialog, which) -> finish())
-                        .setCancelable(false) // Prevent dismissing dialog by tapping outside
+                builder.setTitle("Permission Required");
+
+                if (showPermissionRationale) {
+                    builder.setMessage("All permissions are required to use this app. Please grant all permissions in order to proceed.");
+                } else {
+                    //Nothing
+                }
+                builder.setPositiveButton("OK", (dialog, which) -> finish())
+                        .setCancelable(false)
                         .show();
             }
         }

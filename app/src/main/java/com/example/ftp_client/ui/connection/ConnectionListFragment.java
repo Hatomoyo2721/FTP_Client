@@ -20,6 +20,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.ftp_client.R;
+import com.example.ftp_client.ui.file.FileListFragment;
 import com.example.ftp_client.ui.file.FileTransferHelper;
 import com.example.ftp_client.ui.utils.SharedPreferencesUtil;
 
@@ -41,6 +42,7 @@ public class ConnectionListFragment extends Fragment implements ConnectionAdapte
     private final ThreadLocal<TextView> textViewLoading = new ThreadLocal<>();
     private View loadingView;
     private View overlayView;
+
 
     @Nullable
     @Override
@@ -205,10 +207,12 @@ public class ConnectionListFragment extends Fragment implements ConnectionAdapte
             if (isConnected) {
                 new Handler().postDelayed(() -> {
                     FragmentTransaction transaction = requireActivity().getSupportFragmentManager().beginTransaction();
+
                     FileTransferHelper fileTransferHelper = new FileTransferHelper();
                     fileTransferHelper.setConnectionDetails(
                             connection.getIpAddress(), connection.getPort(),
                             connection.getUsername(), connection.getPassword());
+
                     transaction.replace(R.id.fragment_container, fileTransferHelper);
                     transaction.addToBackStack(null);
                     transaction.commit();

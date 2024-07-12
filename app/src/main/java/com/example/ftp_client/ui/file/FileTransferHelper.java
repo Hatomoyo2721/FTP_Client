@@ -2,8 +2,6 @@ package com.example.ftp_client.ui.file;
 
 import static android.app.Activity.RESULT_OK;
 
-import static kotlin.io.ConsoleKt.readLine;
-
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -38,23 +36,14 @@ import com.example.ftp_client.ui.activity.HistoryItem;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
-import com.google.gson.stream.JsonReader;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.io.BufferedReader;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.StringReader;
 import java.lang.reflect.Type;
 import java.net.Socket;
 import java.text.SimpleDateFormat;

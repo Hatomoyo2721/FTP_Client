@@ -34,7 +34,7 @@
 
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="com.example.ftp_client.fileprovider"
+            android:authorities="com.example.ftp_client.provider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data
