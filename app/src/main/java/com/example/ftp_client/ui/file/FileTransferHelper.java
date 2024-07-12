@@ -2,17 +2,23 @@ package com.example.ftp_client.ui.file;
 
 import static android.app.Activity.RESULT_OK;
 
+import static kotlin.io.ConsoleKt.readLine;
+
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.provider.OpenableColumns;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -20,29 +26,40 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentTransaction;
 
 import com.example.ftp_client.R;
 import com.example.ftp_client.ui.activity.HistoryItem;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
+import com.google.gson.stream.JsonReader;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.StringReader;
 import java.lang.reflect.Type;
 import java.net.Socket;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -114,7 +131,16 @@ public class FileTransferHelper extends Fragment {
         nameDirectory = view.findViewById(R.id.name_directory);
         textViewStatus = view.findViewById(R.id.textViewStatus);
         progressBarReload = view.findViewById(R.id.progressBarReload);
-        fileListAdapter = new FileListAdapter(requireContext(), new ArrayList<>());
+        fileListAdapter = new FileListAdapter(requireContext(), new ArrayList<>(), new FileListAdapter.OnFileClickListener() {
+            @Override
+            public void onFileClick(FileModel file) {
+            }
+
+            @Override
+            public void onFileLongClick(FileModel file) {
+            }
+        });
+
     }
 
     private void setButtonClickListeners() {
@@ -160,6 +186,7 @@ public class FileTransferHelper extends Fragment {
         editor.putString("messages", gson.toJson(historyItems));
         editor.apply();
     }
+
     //===========================//
     /* Send file to Server */
     private void sendFile() {
@@ -213,6 +240,7 @@ public class FileTransferHelper extends Fragment {
                 return "Error sending file: " + e.getMessage();
             }
         }
+
         @Override
         protected void onPostExecute(String result) {
             if (isAdded()) {
@@ -223,6 +251,7 @@ public class FileTransferHelper extends Fragment {
             }
         }
     }
+
     //===========================//
     /* Handle Server shut down */
     private void handleServerShutdown() {
@@ -243,6 +272,7 @@ public class FileTransferHelper extends Fragment {
                 countdownHandler = new Handler();
                 countdownRunnable = new Runnable() {
                     int secondsLeft = 5;
+
                     @Override
                     public void run() {
                         if (secondsLeft > 0) {
@@ -259,59 +289,78 @@ public class FileTransferHelper extends Fragment {
             });
         }
     }
+
     //===========================//
     /* Handle with Directory */
-    @SuppressLint("StaticFieldLeak")
-    private class LoadDirectoryTask extends AsyncTask<Void, Void, List<FileModel>> {
-        @Override
-        protected List<FileModel> doInBackground(Void... voids) {
-            List<FileModel> fileItems = new ArrayList<>();
+    private void loadDirectory(String username) {
+        if (isNetworkConnected()) {
+            new LoadDirectoryTask().execute(username);
+        } else {
+            Toast.makeText(requireContext(), "No network connection", Toast.LENGTH_SHORT).show();
+        }
+    }
 
+    private boolean isNetworkConnected() {
+        ConnectivityManager cm = (ConnectivityManager) requireContext().getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
+        return activeNetwork != null && activeNetwork.isConnectedOrConnecting();
+    }
+
+    private class LoadDirectoryTask extends AsyncTask<String, Void, List<FileModel>> {
+        @Override
+        protected List<FileModel> doInBackground(String... usernames) {
+            List<FileModel> fileItems = new ArrayList<>();
             try (Socket socket = new Socket(serverIP, serverPort);
-                 BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                 DataInputStream inputStream = new DataInputStream(socket.getInputStream());
                  DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream())) {
 
-                outputStream.writeUTF("LOAD_DIRECTORY"); // Request directory content
-                String responseLine;
-                while ((responseLine = reader.readLine()) != null) {
-                    if (responseLine.startsWith("FILE") || responseLine.startsWith("DIR")) {
-                        fileItems.add(FileModel.fromString(responseLine));
+                outputStream.writeUTF("LOAD_DIRECTORY");
+                outputStream.writeUTF(usernames[0]);
+                outputStream.flush();
+
+                String response = inputStream.readUTF();
+                if (!response.isEmpty()) {
+                    try {
+                        JsonElement jsonElement = JsonParser.parseString(response);
+                        if (jsonElement.isJsonArray()) {
+                            FileModel[] fileModels = new Gson().fromJson(jsonElement, FileModel[].class);
+                            fileItems = Arrays.asList(fileModels);
+                        } else {
+                            Log.e("FileTransferHelper", "Invalid response format: " + response);
+                        }
+                    } catch (JsonSyntaxException e) {
+                        e.printStackTrace();
+                        Log.e("FileTransferHelper", "Error parsing server response: " + e.getMessage());
                     }
                 }
             } catch (IOException e) {
                 e.printStackTrace();
-                runOnUiThread(() -> textViewStatus.setText("Error loading directory"));
             }
             return fileItems;
         }
 
         @Override
-        protected void onPreExecute() {
-            super.onPreExecute();
-            runOnUiThread(() -> {
-                progressBarReload.setVisibility(View.VISIBLE);
-                textViewStatus.setText("Loading directory...");
-            });
-        }
-
-        @Override
         protected void onPostExecute(List<FileModel> fileItems) {
+            super.onPostExecute(fileItems);
             progressBarReload.setVisibility(View.GONE);
-            if (fileItems.isEmpty()) {
-                textViewStatus.setText("Directory is empty or failed to load");
-            } else {
-                textViewStatus.setText("Directory loaded successfully");
+            showFileListFragment(fileItems);
+        }
 
-                if (fileListAdapter == null) {
-                    fileListAdapter = new FileListAdapter(requireContext(), new ArrayList<>());
-                }
-                fileListAdapter.updateFileList(fileItems);
-            }
+        private void showFileListFragment(List<FileModel> fileList) {
+            FileListFragment fragment = new FileListFragment();
+            Gson gson = new Gson();
+            String jsonFileList = gson.toJson(fileList);
+            Bundle args = new Bundle();
+            args.putString("fileList", jsonFileList);
+            fragment.setArguments(args);
+
+            FragmentTransaction transaction = requireActivity().getSupportFragmentManager().beginTransaction();
+            transaction.replace(R.id.fragment_container, fragment);
+            transaction.addToBackStack(null);
+            transaction.commit();
         }
     }
-    private void loadDirectory(String username) {
-        new LoadDirectoryTask().execute();
-    }
+
     //===========================//
     /* Helper functions */
     @Override
@@ -351,22 +400,10 @@ public class FileTransferHelper extends Fragment {
         return fileSize;
     }
 
-    @Override
-    public void onDestroyView() {
-        super.onDestroyView();
-        if (countdownHandler != null && countdownRunnable != null) {
-            countdownHandler.removeCallbacks(countdownRunnable);
-        }
-        if (serverShutdownDialog != null && serverShutdownDialog.isShowing()) {
-            serverShutdownDialog.dismiss();
-        }
-    }
-
     private void reloadServer() {
         runOnUiThread(() -> {
             progressBarReload.setVisibility(View.VISIBLE);
             textViewStatus.setText("Waiting for server to reload, please wait a moment...");
-            disableButtons();
         });
 
         new ReloadServerTask().execute();
@@ -408,7 +445,6 @@ public class FileTransferHelper extends Fragment {
                         textViewStatus.setText("Server has shut down.");
                         handleServerShutdown();
                     }
-                    enableButtons();
                 });
             }
         }
@@ -418,31 +454,20 @@ public class FileTransferHelper extends Fragment {
         requireActivity().getSupportFragmentManager().popBackStack();
     }
 
-    private void disableButtons() {
-        runOnUiThread(() -> {
-            fabDisconnect.setClickable(false);
-            fabOpenDrawer.setClickable(false);
-            fabReloadServer.setClickable(false);
-            fabSelectFile.setClickable(false);
-            fabSendFile.setClickable(false);
-            nameDirectory.setClickable(false);
-        });
-    }
-
-    private void enableButtons() {
-        runOnUiThread(() -> {
-            fabDisconnect.setClickable(true);
-            fabOpenDrawer.setClickable(true);
-            fabReloadServer.setClickable(true);
-            fabSelectFile.setClickable(true);
-            fabSendFile.setClickable(true);
-            nameDirectory.setClickable(true);
-        });
-    }
-
     private void runOnUiThread(Runnable action) {
         if (isAdded() && getActivity() != null) {
             getActivity().runOnUiThread(action);
+        }
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        if (countdownHandler != null && countdownRunnable != null) {
+            countdownHandler.removeCallbacks(countdownRunnable);
+        }
+        if (serverShutdownDialog != null && serverShutdownDialog.isShowing()) {
+            serverShutdownDialog.dismiss();
         }
     }
 }

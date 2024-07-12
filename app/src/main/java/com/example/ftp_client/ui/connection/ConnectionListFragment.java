@@ -97,7 +97,7 @@ public class ConnectionListFragment extends Fragment implements ConnectionAdapte
             showLoadingScreen();
             new ConnectToServerTask().execute(connection);
         } else {
-            showErrorDialog("No connection selected.");
+            showErrorDialog("No connection selected or your account is not exist.");
         }
     }
 
