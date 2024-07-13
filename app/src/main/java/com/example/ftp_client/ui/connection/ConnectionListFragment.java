@@ -180,6 +180,20 @@ public class ConnectionListFragment extends Fragment implements ConnectionAdapte
                 .show();
     }
 
+    public void openFileListFragment(String serverIP, int serverPort) {
+        FileListFragment fileListFragment = new FileListFragment();
+        Bundle args = new Bundle();
+        args.putString("serverIP", serverIP);
+        args.putInt("serverPort", serverPort);
+        fileListFragment.setArguments(args);
+
+        getParentFragmentManager().beginTransaction()
+                .replace(R.id.fragment_container, fileListFragment)
+                .addToBackStack(null)
+                .commit();
+    }
+
+
     @SuppressLint("StaticFieldLeak")
     private class ConnectToServerTask extends AsyncTask<ConnectionModel, Void, Boolean> {
         private ConnectionModel connection;

@@ -132,7 +132,7 @@ public class AddConnectionFragment extends Fragment {
         new Thread(() -> {
             boolean isConnected = false;
             try (Socket socket = new Socket()) {
-                socket.connect(new InetSocketAddress(ipAddress, Integer.parseInt(port)), 5000);
+                socket.connect(new InetSocketAddress(ipAddress, Integer.parseInt(port)), 0);
                 if (socket.isConnected()) {
                     try (DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream())) {
                         outputStream.writeUTF("CONNECTION");

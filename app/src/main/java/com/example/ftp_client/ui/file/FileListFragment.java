@@ -1,15 +1,21 @@
 package com.example.ftp_client.ui.file;
 
+import android.annotation.SuppressLint;
+import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.MimeTypeMap;
+import android.widget.Button;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -23,8 +29,10 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.ftp_client.R;
 import com.google.gson.Gson;
 
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.net.Socket;
 import java.util.Arrays;
 import java.util.List;
 
@@ -34,12 +42,28 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
     private TextView textViewNoFiles;
     private List<FileModel> fileList;
 
+    private String serverIP;
+    private int serverPort;
+    private String username;
+    private String password;
+
+    private AlertDialog serverShutdownDialog;
+    private Handler countdownHandler;
+    private Runnable countdownRunnable;
+
+    private ProgressBar progressBarReload;
+
+    private Button fabLoadDirectory;
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_file_list, container, false);
         recyclerViewFiles = view.findViewById(R.id.recyclerViewFiles);
         textViewNoFiles = view.findViewById(R.id.textViewNoFiles);
+
+        progressBarReload = view.findViewById(R.id.progressBarReload);
+        fabLoadDirectory = view.findViewById(R.id.fabReloadDirectory);
 
         if (getArguments() != null) {
             String jsonFileList = getArguments().getString("fileList");
@@ -60,8 +84,11 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
             recyclerViewFiles.setAdapter(adapter);
         }
 
+        fabLoadDirectory.setOnClickListener(v -> reloadServer());
+
         return view;
     }
+
 
     @Override
     public void onFileClick(FileModel file) {
@@ -170,5 +197,94 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
                 .replace(R.id.fragment_container, fragment)
                 .addToBackStack(null)
                 .commit();
+    }
+
+    private void reloadServer() {
+        runOnUiThread(() -> {
+            progressBarReload.setVisibility(View.VISIBLE);
+        });
+
+        new ReloadServerTask().execute();
+    }
+
+    @SuppressLint("StaticFieldLeak")
+    private class ReloadServerTask extends AsyncTask<Void, Void, Boolean> {
+        @Override
+        protected Boolean doInBackground(Void... voids) {
+            Socket socket = null;
+            try {
+                socket = new Socket(serverIP, serverPort);
+                DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream());
+                outputStream.writeUTF("RELOAD_SERVER");
+                outputStream.flush();
+                return true;
+            } catch (IOException e) {
+                e.printStackTrace();
+                return false;
+            } finally {
+                try {
+                    if (socket != null) {
+                        socket.close();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        @Override
+        protected void onPostExecute(Boolean success) {
+            if (isAdded()) {
+                runOnUiThread(() -> {
+                    progressBarReload.setVisibility(View.GONE);
+                    if (success) {
+                    } else {
+                        handleServerShutdown();
+                    }
+                });
+            }
+        }
+    }
+
+    private void runOnUiThread(Runnable action) {
+        if (isAdded() && getActivity() != null) {
+            getActivity().runOnUiThread(action);
+        }
+    }
+
+    private void handleServerShutdown() {
+        if (isAdded()) {
+            runOnUiThread(() -> {
+                AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+                builder.setTitle("Server Shutdown")
+                        .setMessage("Server has shutdown. Go back in 5 seconds.")
+                        .setCancelable(false)
+                        .setPositiveButton("Ok", (dialog, which) -> {
+                            dialog.dismiss();
+                            new Handler().postDelayed(() ->
+                                    requireActivity().getSupportFragmentManager().popBackStack(), 2000);
+                        });
+
+                serverShutdownDialog = builder.create();
+                serverShutdownDialog.show();
+                countdownHandler = new Handler();
+                countdownRunnable = new Runnable() {
+                    int secondsLeft = 5;
+
+                    @Override
+                    public void run() {
+                        if (secondsLeft > 0) {
+                            secondsLeft--;
+                            new Handler().postDelayed(this, 1000);
+                        } else {
+                            serverShutdownDialog.dismiss();
+                            countdownHandler.removeCallbacks(this);
+                            requireActivity().getSupportFragmentManager().popBackStack();
+                        }
+                    }
+                };
+                countdownHandler.post(countdownRunnable);
+            });
+        }
     }
 }
