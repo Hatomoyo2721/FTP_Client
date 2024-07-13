@@ -4,6 +4,4 @@
     <cache-path name="cache" path="." />
     <external-files-path name="external_files" path="." />
     <external-cache-path name="external_cache" path="." />
-
-    <files-path name="my_files" path="C:\Users\HP PAVILION\Desktop\LapTrinhMang\LyThuyet\FTP_Server\HandlerServer\Main\server_python\users_directories\aaa\" />
 </paths>
