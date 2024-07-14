@@ -52,12 +52,12 @@ public class AddConnectionFragment extends Fragment {
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.fragment_create_new_connection, container, false);
+        View v = inflater.inflate(R.layout.fragment_add_new_connection, container, false);
 
-        initializeViews(view);
+        initializeViews(v);
         setListeners();
 
-        return view;
+        return v;
     }
 
     private void initializeViews(View view) {
@@ -310,9 +310,6 @@ public class AddConnectionFragment extends Fragment {
             getActivity().runOnUiThread(() -> new AlertDialog.Builder(getContext())
                     .setMessage(message)
                     .setPositiveButton(android.R.string.ok, (dialog, which) -> {
-                        if (isAdded()) {
-                            requireActivity().getSupportFragmentManager().popBackStack();
-                        }
                     })
                     .show());
         }

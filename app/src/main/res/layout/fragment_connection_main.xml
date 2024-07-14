@@ -33,7 +33,7 @@
 
 
         <!-- Add Connection Layout -->
-        <include layout="@layout/fragment_create_new_connection" />
+        <include layout="@layout/fragment_add_new_connection" />
 
     </FrameLayout>
 

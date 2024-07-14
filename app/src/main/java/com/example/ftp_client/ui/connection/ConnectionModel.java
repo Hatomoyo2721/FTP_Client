@@ -37,6 +37,13 @@ public class ConnectionModel implements Parcelable {
         password = in.readString();
     }
 
+    public ConnectionModel(String ipAddress, int port, String username) {
+        this.id = UUID.randomUUID();
+        this.ipAddress = ipAddress;
+        this.port = port;
+        this.username = username;
+    }
+
     public UUID getId() {
         return id;
     }
@@ -96,12 +103,12 @@ public class ConnectionModel implements Parcelable {
         if (this == obj) return true;
         if (obj == null || getClass() != obj.getClass()) return false;
         ConnectionModel that = (ConnectionModel) obj;
-        return id.equals(that.id);
+        return id != null && id.equals(that.id);
     }
 
     @Override
     public int hashCode() {
-        return id.hashCode();
+        return id != null ? id.hashCode() : 0;
     }
 
     public String toJson() {
