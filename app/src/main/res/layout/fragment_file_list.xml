@@ -31,7 +31,7 @@
 
     <!-- Floating Action Button for opening the navigation drawer -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fabOpenDrawer"
+        android:id="@+id/fabOpenMenuFileAction"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
@@ -43,7 +43,7 @@
 
     <!-- FAB Navigation Drawer Layout -->
     <LinearLayout
-        android:id="@+id/fabNavigationDrawer"
+        android:id="@+id/fabNavigationDrawerFileAction"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentEnd="true"
@@ -54,7 +54,7 @@
         android:elevation="8dp"
         android:orientation="vertical"
         android:padding="10dp"
-        android:visibility="visible">
+        android:visibility="gone">
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/fabUploadFile"
@@ -75,11 +75,11 @@
             app:tint="@android:color/white" />
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/fabReloadDirectory"
+            android:id="@+id/fabBackToFileTransferLayout"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginBottom="5dp"
-            android:src="@drawable/baseline_reload"
+            android:src="@drawable/baseline_logout_24"
             app:fabSize="normal"
             app:tint="@android:color/white" />
     </LinearLayout>

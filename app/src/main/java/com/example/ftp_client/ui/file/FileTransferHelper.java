@@ -20,6 +20,8 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -84,8 +86,6 @@ public class FileTransferHelper extends Fragment {
     private Handler countdownHandler;
     private Runnable countdownRunnable;
 
-    private FileListAdapter fileListAdapter;
-
     public FileTransferHelper() {
         // Required empty public constructor
     }
@@ -120,16 +120,6 @@ public class FileTransferHelper extends Fragment {
         nameDirectory = view.findViewById(R.id.name_directory);
         textViewStatus = view.findViewById(R.id.textViewStatus);
         progressBarReload = view.findViewById(R.id.progressBarReload);
-        fileListAdapter = new FileListAdapter(requireContext(), new ArrayList<>(), new FileListAdapter.OnFileClickListener() {
-            @Override
-            public void onFileClick(FileModel file) {
-            }
-
-            @Override
-            public void onFileLongClick(FileModel file) {
-            }
-        });
-
     }
 
     private void setButtonClickListeners() {
@@ -140,7 +130,6 @@ public class FileTransferHelper extends Fragment {
         fabOpenDrawer.setOnClickListener(v -> toggleNavigationDrawer());
         nameDirectory.setOnClickListener(v -> loadDirectory(username));
     }
-
 
     private void toggleNavigationDrawer() {
         fabNavigationDrawer.setVisibility(fabNavigationDrawer.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE);
@@ -307,20 +296,13 @@ public class FileTransferHelper extends Fragment {
                 outputStream.writeUTF(usernames[0]);
                 outputStream.flush();
 
-                String response = inputStream.readUTF();
-                if (!response.isEmpty()) {
-                    try {
-                        JsonElement jsonElement = JsonParser.parseString(response);
-                        if (jsonElement.isJsonArray()) {
-                            FileModel[] fileModels = new Gson().fromJson(jsonElement, FileModel[].class);
-                            fileItems = Arrays.asList(fileModels);
-                        } else {
-                            Log.e("FileTransferHelper", "Invalid response format: " + response);
-                        }
-                    } catch (JsonSyntaxException e) {
-                        e.printStackTrace();
-                        Log.e("FileTransferHelper", "Error parsing server response: " + e.getMessage());
-                    }
+                int fileCount = inputStream.readInt();
+                for (int i = 0; i < fileCount; i++) {
+                    String fileName = inputStream.readUTF();
+                    boolean isDirectory = inputStream.readBoolean();
+                    String filePath = "";
+                    FileModel fileModel = new FileModel(fileName, isDirectory ? FileModel.TYPE_DIRECTORY : FileModel.TYPE_FILE, filePath);
+                    fileItems.add(fileModel);
                 }
             } catch (IOException e) {
                 e.printStackTrace();
