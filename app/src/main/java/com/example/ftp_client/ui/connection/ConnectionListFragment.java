@@ -18,11 +18,14 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.viewpager2.widget.ViewPager2;
 
 import com.example.ftp_client.R;
 import com.example.ftp_client.ui.file.FileListFragment;
 import com.example.ftp_client.ui.file.FileTransferHelper;
 import com.example.ftp_client.ui.utils.SharedPreferencesUtil;
+import com.google.android.material.tabs.TabLayout;
+import com.google.android.material.tabs.TabLayoutMediator;
 
 import java.io.IOException;
 import java.net.Socket;
@@ -60,8 +63,8 @@ public class ConnectionListFragment extends Fragment implements ConnectionAdapte
         textViewLoading.set(loadingView.findViewById(R.id.loadingTextView));
         overlayView = view.findViewById(R.id.overlayView);
 
-        // Load connection list from SharedPreferences
         connectionList = SharedPreferencesUtil.loadConnectionList(requireContext());
+
 
         adapter = new ConnectionAdapter(getContext(), connectionList, this);
         recyclerView.setAdapter(adapter);
@@ -70,7 +73,7 @@ public class ConnectionListFragment extends Fragment implements ConnectionAdapte
         buttonAddConnection.setOnClickListener(v -> {
             FragmentTransaction transaction = requireActivity().getSupportFragmentManager().beginTransaction();
             transaction.setCustomAnimations(R.anim.slide_in_right, R.anim.slide_out_left, R.anim.slide_in_left, R.anim.slide_out_right);
-            transaction.replace(R.id.fragment_container, new AddConnectionFragment());
+            transaction.replace(R.id.fragment_container, new ConnectionMainLayout());
             transaction.addToBackStack(null);
             transaction.commit();
         });
@@ -85,7 +88,11 @@ public class ConnectionListFragment extends Fragment implements ConnectionAdapte
         super.onResume();
         updateConnectionList();
     }
-    
+
+    public ConnectionListFragment() {
+        // Required empty public constructor
+    }
+
     @Override
     public void onConnectionClick(ConnectionModel connection) {
         BottomSheetConnectionActions bottomSheet = BottomSheetConnectionActions.newInstance(connection);
@@ -179,20 +186,6 @@ public class ConnectionListFragment extends Fragment implements ConnectionAdapte
                 .setPositiveButton("Ok", (dialog, which) -> dialog.dismiss())
                 .show();
     }
-
-    public void openFileListFragment(String serverIP, int serverPort) {
-        FileListFragment fileListFragment = new FileListFragment();
-        Bundle args = new Bundle();
-        args.putString("serverIP", serverIP);
-        args.putInt("serverPort", serverPort);
-        fileListFragment.setArguments(args);
-
-        getParentFragmentManager().beginTransaction()
-                .replace(R.id.fragment_container, fileListFragment)
-                .addToBackStack(null)
-                .commit();
-    }
-
 
     @SuppressLint("StaticFieldLeak")
     private class ConnectToServerTask extends AsyncTask<ConnectionModel, Void, Boolean> {

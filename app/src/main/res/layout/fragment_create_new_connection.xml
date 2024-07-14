@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+    <Button
+        android:id="@+id/btnBack"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:layout_marginTop="30dp"
+        android:layout_marginLeft="12dp"
+        android:background="@drawable/baseline_arrow_back"
+        android:contentDescription="Back button"/>
+
+    <!-- IP Address Input -->
+    <EditText
+        android:id="@+id/editTextIPAddress"
+        android:layout_width="280dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="100dp"
+        android:layout_centerHorizontal="true"
+        android:hint="IP Address"
+        android:inputType="text"
+        android:padding="16dp"
+        android:background="@drawable/input_border"/>
+
+    <EditText
+        android:id="@+id/editTextPort"
+        android:layout_width="280dp"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/editTextIPAddress"
+        android:layout_marginTop="16dp"
+        android:layout_centerHorizontal="true"
+        android:hint="Port"
+        android:inputType="number"
+        android:padding="16dp"
+        android:background="@drawable/input_border"/>
+
+    <EditText
+        android:id="@+id/editTextUsername"
+        android:layout_width="280dp"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/editTextPort"
+        android:layout_marginTop="16dp"
+        android:layout_centerHorizontal="true"
+        android:hint="Username"
+        android:inputType="text"
+        android:padding="16dp"
+        android:background="@drawable/input_border"/>
+
+    <!-- Password Input -->
+    <EditText
+        android:id="@+id/editTextPassword"
+        android:layout_width="280dp"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/editTextUsername"
+        android:layout_marginTop="16dp"
+        android:layout_centerHorizontal="true"
+        android:hint="Password"
+        android:inputType="textPassword"
+        android:padding="16dp"
+        android:background="@drawable/input_border"/>
+
+    <ImageButton
+        android:id="@+id/btnTogglePassword"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBottom="@id/editTextPassword"
+        android:layout_alignEnd="@id/editTextPassword"
+        android:layout_marginEnd="10dp"
+        android:layout_marginBottom="8dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Toggle password visibility"
+        android:padding="8dp"
+        android:src="@drawable/baseline_visibility_off"/>
+
+    <!-- Save Button -->
+    <Button
+        android:id="@+id/buttonSave"
+        android:layout_width="160dp"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/editTextPassword"
+        android:layout_marginTop="33dp"
+        android:layout_centerHorizontal="true"
+        android:text="Save"
+        android:textSize="10sp"
+        android:textColor="@color/white"
+        android:background="@drawable/btn_register"/>
+
+    <RelativeLayout
+        android:id="@+id/loadingScreenLayout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:background="#80000000"
+        android:visibility="gone">
+
+        <ProgressBar
+            android:id="@+id/loadingProgressBar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:indeterminate="true"
+            android:layout_centerInParent="true" />
+
+        <TextView
+            android:id="@+id/loadingTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/loadingProgressBar"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="8dp"
+            android:text="Connecting..."
+            android:textColor="@android:color/white"
+            android:textSize="16sp" />
+    </RelativeLayout>
+
+</RelativeLayout>

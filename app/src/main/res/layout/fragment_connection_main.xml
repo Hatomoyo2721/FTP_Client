@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".ui.connection.ConnectionMainLayout"
+    android:layout_marginTop="60dp">
+
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/tabLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        app:tabMode="fixed"
+        app:tabGravity="fill"
+        app:tabTextAppearance="@style/MineCustomTabText"
+        />
+
+    <androidx.viewpager2.widget.ViewPager2
+        android:id="@+id/viewPager"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/tabLayout" />
+
+    <FrameLayout
+        android:id="@+id/containerAddConnection"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:visibility="visible"
+        android:layout_below="@id/tabLayout">
+
+
+        <!-- Add Connection Layout -->
+        <include layout="@layout/fragment_create_new_connection" />
+
+    </FrameLayout>
+
+    <FrameLayout
+        android:id="@+id/containerAddExisting"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:visibility="gone"
+        android:layout_below="@id/tabLayout">
+
+        <!-- Add Existing Layout -->
+        <include layout="@layout/fragment_add_existing_connection" />
+
+    </FrameLayout>
+
+</RelativeLayout>

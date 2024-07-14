@@ -23,6 +23,7 @@ import androidx.fragment.app.Fragment;
 import com.example.ftp_client.R;
 import com.example.ftp_client.ui.utils.SharedPreferencesUtil;
 
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -51,7 +52,7 @@ public class AddConnectionFragment extends Fragment {
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.fragment_add_connection, container, false);
+        View view = inflater.inflate(R.layout.fragment_create_new_connection, container, false);
 
         initializeViews(view);
         setListeners();
@@ -134,27 +135,35 @@ public class AddConnectionFragment extends Fragment {
             try (Socket socket = new Socket()) {
                 socket.connect(new InetSocketAddress(ipAddress, Integer.parseInt(port)), 0);
                 if (socket.isConnected()) {
-                    try (DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream())) {
+                    try (DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream());
+                         DataInputStream inputStream = new DataInputStream(socket.getInputStream())) {
+
                         outputStream.writeUTF("CONNECTION");
                         outputStream.writeUTF(connectionJson);
                         outputStream.flush();
-                        isConnected = true;
-                        showAlertOnUiThread("Connection added successfully");
 
-                        // Save the new connection to SharedPreferences only if connected successfully
-                        ArrayList<ConnectionModel> connectionList = SharedPreferencesUtil.loadConnectionList(requireContext());
-                        if (connectionList == null) {
-                            connectionList = new ArrayList<>();
-                        }
-                        connectionList.add(connection);
-                        SharedPreferencesUtil.saveConnectionList(requireContext(), connectionList);
+                        String response = inputStream.readUTF();
+                        if ("USER_EXISTS".equals(response)) {
+                            showAlertOnUiThread("A connection with this username already exists.");
+                        } else if ("CONNECTION_SAVED".equals(response)) {
+                            isConnected = true;
+                            showAlertOnUiThread("Connection added successfully");
 
-                        if (listener != null) {
-                            listener.onConnectionAdded(connection);
-                        }
+                            // Save the new connection to SharedPreferences only if connected successfully
+                            ArrayList<ConnectionModel> connectionList = SharedPreferencesUtil.loadConnectionList(requireContext());
+                            if (connectionList == null) {
+                                connectionList = new ArrayList<>();
+                            }
+                            connectionList.add(connection);
+                            SharedPreferencesUtil.saveConnectionList(requireContext(), connectionList);
 
-                        if (isAdded()) {
-                            requireActivity().getSupportFragmentManager().popBackStack();
+                            if (listener != null) {
+                                listener.onConnectionAdded(connection);
+                            }
+
+                            if (isAdded()) {
+                                requireActivity().getSupportFragmentManager().popBackStack();
+                            }
                         }
                     }
                 } else {

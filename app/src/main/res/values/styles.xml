@@ -14,4 +14,9 @@
         <item name="android:tint">@android:color/white</item>
     </style>
 
+    <style name="MineCustomTabText" parent="TextAppearance.AppCompat.Widget.ActionBar.Title.Inverse">
+        <item name="android:textSize">14sp</item>
+        <item name="android:textColor">@color/black</item>
+    </style>
+
 </resources>
