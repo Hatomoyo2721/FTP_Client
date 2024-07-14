@@ -8,6 +8,7 @@ import com.google.gson.Gson;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.UUID;
 
 public class ConnectionModel implements Parcelable {
@@ -103,7 +104,9 @@ public class ConnectionModel implements Parcelable {
         if (this == obj) return true;
         if (obj == null || getClass() != obj.getClass()) return false;
         ConnectionModel that = (ConnectionModel) obj;
-        return id != null && id.equals(that.id);
+        return port == that.port &&
+                Objects.equals(ipAddress, that.ipAddress) &&
+                Objects.equals(username, that.username);
     }
 
     @Override

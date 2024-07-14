@@ -129,7 +129,7 @@ public class ConnectionListFragment extends Fragment implements ConnectionAdapte
         if (connectionList == null) {
             connectionList = new ArrayList<>();
         }
-        adapter = new ConnectionAdapter(getContext(), connectionList, this); //Update list
+        adapter = new ConnectionAdapter(getContext(), connectionList, this);
         adapter.notifyDataSetChanged(); //Announce adapter changing
         recyclerView.setAdapter(adapter);
 

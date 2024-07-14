@@ -171,18 +171,18 @@ public class AddExistingConnectionFragment extends Fragment {
                     String username = editTextUsername.getText().toString().trim();
 
                     ArrayList<ConnectionModel> connectionList = SharedPreferencesUtil.loadConnectionList(requireContext());
-                    ConnectionModel connection = new ConnectionModel(ipAddress, port, username);
+                    ConnectionModel newConnection = new ConnectionModel(ipAddress, port, username);
 
                     boolean isExist = false;
                     for (ConnectionModel existingConnection : connectionList) {
-                        if (existingConnection.getIpAddress().equals(ipAddress)) {
+                        if (existingConnection.equals(newConnection)) {
                             isExist = true;
                             break;
                         }
                     }
 
                     if (!isExist) {
-                        connectionList.add(connection);
+                        connectionList.add(newConnection);
                         SharedPreferencesUtil.saveConnectionList(requireContext(), connectionList);
                         showAlertOnUiThread("Connection added successfully. Welcome back.");
 
