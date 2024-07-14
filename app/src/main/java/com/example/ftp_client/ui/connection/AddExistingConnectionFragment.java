@@ -6,6 +6,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
@@ -18,13 +19,14 @@ import com.example.ftp_client.R;
 
 public class AddExistingConnectionFragment extends Fragment {
 
+    private ProgressBar loadingProgressBar;
+    private TextView loadingTextView;
     private EditText editTextIPAddress;
     private EditText editTextPort;
     private EditText editTextUsername;
     private Button buttonSave;
+    private Button buttonBack;
     private RelativeLayout loadingScreenLayout;
-    private ProgressBar loadingProgressBar;
-    private TextView loadingTextView;
 
     public AddExistingConnectionFragment() {
 
@@ -35,29 +37,24 @@ public class AddExistingConnectionFragment extends Fragment {
                              Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.fragment_add_existing_connection, container, false);
 
-        // Initialize views
         editTextIPAddress = rootView.findViewById(R.id.editTextIPAddress);
         editTextPort = rootView.findViewById(R.id.editTextPort);
         editTextUsername = rootView.findViewById(R.id.editTextUsername);
         buttonSave = rootView.findViewById(R.id.buttonSave);
-        loadingScreenLayout = rootView.findViewById(R.id.loadingScreenLayout);
-        loadingProgressBar = rootView.findViewById(R.id.loadingProgressBar);
-        loadingTextView = rootView.findViewById(R.id.loadingTextView);
+        loadingScreenLayout = rootView.findViewById(R.id.loadingScreenLayoutExisting);
+        loadingProgressBar = rootView.findViewById(R.id.loadingProgressBarExisting);
+        loadingTextView = rootView.findViewById(R.id.loadingTextViewExisting);
 
-        // Setup button click listener
         buttonSave.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                // Handle save button click
-                saveConnection();
+                saveExistConnection();
             }
         });
 
         return rootView;
     }
 
-    private void saveConnection() {
-        // Placeholder method for saving connection logic
-        // You can implement your connection saving logic here
+    private void saveExistConnection() {
     }
 }
