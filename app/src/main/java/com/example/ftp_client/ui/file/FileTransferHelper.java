@@ -16,12 +16,9 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.provider.OpenableColumns;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.animation.Animation;
-import android.view.animation.AnimationUtils;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -50,7 +47,6 @@ import java.lang.reflect.Type;
 import java.net.Socket;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -285,6 +281,8 @@ public class FileTransferHelper extends Fragment {
     }
 
     private class LoadDirectoryTask extends AsyncTask<String, Void, List<FileModel>> {
+        private String errorMessage = null;
+
         @Override
         protected List<FileModel> doInBackground(String... usernames) {
             List<FileModel> fileItems = new ArrayList<>();
@@ -296,16 +294,24 @@ public class FileTransferHelper extends Fragment {
                 outputStream.writeUTF(usernames[0]);
                 outputStream.flush();
 
-                int fileCount = inputStream.readInt();
-                for (int i = 0; i < fileCount; i++) {
-                    String fileName = inputStream.readUTF();
-                    boolean isDirectory = inputStream.readBoolean();
-                    String filePath = "";
-                    FileModel fileModel = new FileModel(fileName, isDirectory ? FileModel.TYPE_DIRECTORY : FileModel.TYPE_FILE, filePath);
-                    fileItems.add(fileModel);
+                int responseCode = inputStream.readInt();
+                if (responseCode == 0) { // Assuming 0 indicates success
+                    int fileCount = inputStream.readInt();
+                    for (int i = 0; i < fileCount; i++) {
+                        String fileName = inputStream.readUTF();
+                        boolean isDirectory = inputStream.readBoolean();
+                        String filePath = "";
+                        FileModel fileModel = new FileModel(fileName, isDirectory ? FileModel.TYPE_DIRECTORY : FileModel.TYPE_FILE, filePath);
+                        fileItems.add(fileModel);
+                    }
+                } else if (responseCode == 1) {
+                    errorMessage = "Your account or directory has been deleted or encountered an error. Please contact support.";
+                } else {
+                    errorMessage = "An unknown error occurred. Please try again later.";
                 }
             } catch (IOException e) {
                 e.printStackTrace();
+                errorMessage = "Failed to connect to the server. Please check your network connection and try again.";
             }
             return fileItems;
         }
@@ -314,7 +320,22 @@ public class FileTransferHelper extends Fragment {
         protected void onPostExecute(List<FileModel> fileItems) {
             super.onPostExecute(fileItems);
             progressBarReload.setVisibility(View.GONE);
-            showFileListFragment(fileItems);
+
+            if (errorMessage != null) {
+                showAlert(errorMessage);
+            } else {
+                showFileListFragment(fileItems);
+            }
+        }
+
+        private void showAlert(String message) {
+            if (isAdded()) {
+                new AlertDialog.Builder(requireContext())
+                        .setTitle("Error")
+                        .setMessage(message)
+                        .setPositiveButton("OK", (dialog, which) -> dialog.dismiss())
+                        .show();
+            }
         }
 
         private void showFileListFragment(List<FileModel> fileList) {
