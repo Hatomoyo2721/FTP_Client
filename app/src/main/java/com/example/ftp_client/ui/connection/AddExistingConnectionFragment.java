@@ -4,20 +4,19 @@ import android.app.AlertDialog;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.text.InputType;
+import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
-import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.example.ftp_client.R;
@@ -80,10 +79,7 @@ public class AddExistingConnectionFragment extends Fragment {
         String username = editTextUsername.getText().toString().trim();
         String password = editTextPassword.getText().toString().trim();
 
-        if (ipAddress.isEmpty() || portStr.isEmpty() || username.isEmpty()) {
-            Toast.makeText(getActivity(), "Please fill in all fields", Toast.LENGTH_SHORT).show();
-            return;
-        }
+        if (!validateInputFields(ipAddress, portStr, username)) return;
 
         int port = Integer.parseInt(portStr);
 
@@ -102,6 +98,63 @@ public class AddExistingConnectionFragment extends Fragment {
 
         editTextPassword.setSelection(editTextPassword.getText().length());
         isPasswordVisible = !isPasswordVisible;
+    }
+
+    private boolean validateInputFields(String ipAddress, String portStr, String username) {
+        if (TextUtils.isEmpty(ipAddress)) {
+            showFieldAlert("IP address cannot be empty");
+            return false;
+        }
+        if (TextUtils.isEmpty(portStr)) {
+            showFieldAlert("Port number cannot be empty");
+            return false;
+        }
+        if (TextUtils.isEmpty(username)) {
+            showFieldAlert("Username cannot be empty");
+            return false;
+        }
+        if (!isValidIPAddress(ipAddress)) {
+            showFieldAlert("Please enter a valid IP address");
+            return false;
+        }
+        try {
+            int port = Integer.parseInt(portStr);
+            if (port < 1 || port > 65535) {
+                showFieldAlert("Port must be between 1 and 65535");
+                return false;
+            }
+        } catch (NumberFormatException e) {
+            showFieldAlert("Invalid port number");
+            return false;
+        }
+        if (!isValidUsername(username)) {
+            showFieldAlert("Username can only contain letters, numbers, and underscores (_)");
+            return false;
+        }
+        return true;
+    }
+
+    private boolean isValidIPAddress(String ip) {
+        String ipRegex = "^([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\." +
+                "([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\." +
+                "([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\." +
+                "([01]?\\d\\d?|2[0-4]\\d|25[0-5])$";
+        return ip.matches(ipRegex);
+    }
+
+    private boolean isValidUsername(String username) {
+        String usernameRegex = "^[a-zA-Z0-9_]+$";
+        return username.matches(usernameRegex);
+    }
+
+    private void showFieldAlert(String message) {
+        if (isAdded() && getActivity() != null) {
+            new AlertDialog.Builder(getContext())
+                    .setMessage(message)
+                    .setPositiveButton(android.R.string.ok, (dialog, which) -> {
+                    })
+                    .show();
+        }
     }
 
     private class ConnectToServerTask extends AsyncTask<Object, Void, String> {

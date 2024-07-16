@@ -14,7 +14,6 @@ import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -98,13 +97,8 @@ public class AddConnectionFragment extends Fragment {
 
         if (!validateInputFields(ipAddress, port, username, password)) return;
 
-        int _port;
-        try {
-            _port = validatePort(port);
-        } catch (NumberFormatException e) {
-            Toast.makeText(getActivity(), "Invalid port number", Toast.LENGTH_LONG).show();
-            return;
-        }
+        int _port = getValidatedPort(port);
+        if (_port == -1) return;
 
         ArrayList<ConnectionModel> connectionList = SharedPreferencesUtil.loadConnectionList(requireContext());
         if (connectionList == null) {
@@ -121,6 +115,20 @@ public class AddConnectionFragment extends Fragment {
         //Send to Server - Java
         String connectionJson = connection.toJson();
         sendJsonToServer(connectionJson, connection);
+    }
+
+    private int getValidatedPort(String portStr) {
+        try {
+            int port = Integer.parseInt(portStr);
+            if (port < 1 || port > 65535) {
+                showAlert("Port number must be between 1 and 65535");
+                return -1;
+            }
+            return port;
+        } catch (NumberFormatException e) {
+            showAlert("Invalid port number");
+            return -1;
+        }
     }
 
     private void sendJsonToServer(String connectionJson, ConnectionModel connection) {
@@ -227,26 +235,27 @@ public class AddConnectionFragment extends Fragment {
 
     private boolean validateInputFields(String ipAddress, String portStr, String username, String password) {
         if (TextUtils.isEmpty(ipAddress) || TextUtils.isEmpty(portStr) || TextUtils.isEmpty(username) || TextUtils.isEmpty(password)) {
-            Toast.makeText(getActivity(), "Please fill in all fields", Toast.LENGTH_LONG).show();
+            showAlert("Please fill in all fields");
             return false;
         }
         if (!isValidIPAddress(ipAddress)) {
-            Toast.makeText(getActivity(), "Please enter a valid IP address", Toast.LENGTH_LONG).show();
+            showAlert("Please enter a valid IP address");
             return false;
         }
         if (!isValidUsername(username)) {
-            Toast.makeText(getActivity(), "Username can only contain letters, numbers, and underscores (_)", Toast.LENGTH_SHORT).show();
+            showAlert("Username can only contain letters, numbers, and underscores (_)");
+            return false;
+        }
+        if (!isValidPassword(password)) {
+            showAlert("Password must be 6 to 12 characters long and contain only letters and numbers");
             return false;
         }
         return true;
     }
 
-    private int validatePort(String port) throws NumberFormatException {
-        int _port = Integer.parseInt(port);
-        if (_port < 1 || _port > 65535) {
-            throw new NumberFormatException("Port out of range");
-        }
-        return _port;
+    private boolean isValidPassword(String password) {
+        String passwordRegex = "^[a-zA-Z0-9]{6,12}$";
+        return password.matches(passwordRegex);
     }
 
     private Map<String, Set<String>> getIpUsernameMap(ArrayList<ConnectionModel> connectionList) {
