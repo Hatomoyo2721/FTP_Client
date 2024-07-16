@@ -32,16 +32,12 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.ViewHold
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        if (position < 0 || position >= historyItems.size()) {
-            return;
-        }
-
         HistoryItem historyItem = historyItems.get(position);
         holder.textViewIpAddress.setText(historyItem.getIpAddress());
         holder.textViewFileName.setText(historyItem.getFileName());
         holder.textViewFileUri.setText(historyItem.getFileUri());
         holder.textViewTimestamp.setText(historyItem.getTimestamp());
-        holder.btnDeleteHistory.setOnClickListener(v -> onDeleteClickListener.onDeleteClick(position));
+        holder.btnDeleteHistory.setOnClickListener(v -> onDeleteClickListener.onDeleteClick(holder.getAdapterPosition()));
     }
 
     @Override
@@ -68,5 +64,10 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.ViewHold
 
     public interface OnDeleteClickListener {
         void onDeleteClick(int position);
+    }
+
+    public void updateHistoryItems(List<HistoryItem> newHistoryItems) {
+        this.historyItems = newHistoryItems;
+        notifyDataSetChanged();
     }
 }

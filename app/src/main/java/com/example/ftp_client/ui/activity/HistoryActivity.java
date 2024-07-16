@@ -15,7 +15,6 @@ import com.example.ftp_client.R;
 import com.example.ftp_client.ui.utils.SharedPreferencesUtil;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 public class HistoryActivity extends AppCompatActivity {
@@ -49,39 +48,32 @@ public class HistoryActivity extends AppCompatActivity {
         if (loadedHistoryItems != null) {
             historyItems.clear();
             historyItems.addAll(loadedHistoryItems);
-            Collections.reverse(historyItems);
             historyAdapter.notifyDataSetChanged();
         }
     }
 
-    @SuppressLint("NotifyDataSetChanged")
     private void deleteItem(int position) {
-        try {
-            if (position < 0 || position >= historyItems.size()) {
-                Log.e("History", "Invalid position: " + position);
-                return;
-            }
-
-            HistoryItem itemToDelete = historyItems.get(position);
-            SharedPreferencesUtil.deleteHistoryItem(this, historyItems, itemToDelete);
-
-            runOnUiThread(() -> {
-                historyItems.remove(position);
-                historyAdapter.notifyItemRemoved(position);
-                historyAdapter.notifyItemRangeChanged(position, historyItems.size());
-            });
-        } catch (IndexOutOfBoundsException e) {
-            Log.e("History", "Exception when deleting item: " + e.getMessage());
+        if (historyItems.isEmpty()) {
+            Log.e("History", "History items list is empty.");
+            return;
         }
+
+        if (position < 0 || position >= historyItems.size()) {
+            Log.e("History", "Invalid position: " + position);
+            return;
+        }
+
+        HistoryItem itemToDelete = historyItems.get(position);
+        historyItems.remove(position);
+        SharedPreferencesUtil.deleteHistoryItem(this, historyItems, itemToDelete);
+        historyAdapter.updateHistoryItems(historyItems);
     }
 
     @SuppressLint("NotifyDataSetChanged")
     private void deleteAllItems() {
-        runOnUiThread(() -> {
-            historyItems.clear();
-            historyAdapter.notifyDataSetChanged();
-            SharedPreferencesUtil.saveHistoryList(this, historyItems);
-        });
+        historyItems.clear();
+        historyAdapter.updateHistoryItems(historyItems);
+        SharedPreferencesUtil.saveHistoryList(this, historyItems);
     }
 
     private void showDeleteConfirmationDialog(int position) {
