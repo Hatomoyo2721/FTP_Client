@@ -41,6 +41,7 @@ import com.google.gson.JsonSyntaxException;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Type;
@@ -296,14 +297,8 @@ public class FileTransferHelper extends Fragment {
 
                 int responseCode = inputStream.readInt();
                 if (responseCode == 0) { // Assuming 0 indicates success
-                    int fileCount = inputStream.readInt();
-                    for (int i = 0; i < fileCount; i++) {
-                        String fileName = inputStream.readUTF();
-                        boolean isDirectory = inputStream.readBoolean();
-                        String filePath = "";
-                        FileModel fileModel = new FileModel(fileName, isDirectory ? FileModel.TYPE_DIRECTORY : FileModel.TYPE_FILE, filePath);
-                        fileItems.add(fileModel);
-                    }
+                    String readFiles = inputStream.readUTF();
+                    fileItems = new Gson().fromJson(readFiles, fileItems.getClass());
                 } else if (responseCode == 1) {
                     errorMessage = "Your account or directory has been deleted or encountered an error. Please contact support.";
                 } else {

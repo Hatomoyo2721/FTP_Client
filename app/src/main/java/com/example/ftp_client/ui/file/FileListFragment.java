@@ -1,16 +1,20 @@
 package com.example.ftp_client.ui.file;
 
+import static androidx.core.content.ContextCompat.checkSelfPermission;
+
+import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.animation.Animation;
-import android.view.animation.AnimationUtils;
 import android.webkit.MimeTypeMap;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -19,6 +23,8 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -48,6 +54,8 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
     private ProgressBar progressBarReload;
 
     private FloatingActionButton fabBackToPreviousLayout;
+
+    private static final int REQUEST_CODE_STORAGE_PERMISSION = 1;
 
     @Nullable
     @Override
@@ -97,6 +105,19 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
         return v;
     }
 
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_CODE_STORAGE_PERMISSION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Log.v("FileListFragment", "Storage permission granted.");
+            } else {
+                Log.e("FileListFragment", "Storage permission denied.");
+                Toast.makeText(requireContext(), "Storage permission is required to access files.", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
     private void toggleNavigationDrawerFileAction() {
         fabNavigationDrawerFileAction.setVisibility(fabNavigationDrawerFileAction.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE);
     }
@@ -105,8 +126,10 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
     public void onFileClick(FileModel file) {
         if (file.isDirectory()) {
             loadDirectory(file.getPath());
-        } else {
+        } if (isStoragePermissionGranted()) {
             openFile(file);
+        } else {
+            Log.e("FileListFragment", "Storage permission not granted.");
         }
     }
 
@@ -132,12 +155,34 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
         return false;
     }
 
+    public boolean isStoragePermissionGranted() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.READ_EXTERNAL_STORAGE)
+                    == PackageManager.PERMISSION_GRANTED &&
+                    ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                            == PackageManager.PERMISSION_GRANTED) {
+                Log.v("FileListFragment", "Permission is granted");
+                return true;
+            } else {
+                Log.v("FileListFragment", "Permission is revoked");
+                requestPermissions(new String[]{
+                        Manifest.permission.READ_EXTERNAL_STORAGE,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE
+                }, REQUEST_CODE_STORAGE_PERMISSION);
+                return false;
+            }
+        } else {
+            Log.v("FileListFragment", "Permission is granted");
+            return true;
+        }
+    }
+
+    @SuppressLint("QueryPermissionsNeeded")
     private void openFile(FileModel file) {
         if (file.getPath() == null || file.getPath().isEmpty()) {
             Log.e("FileListFragment", "File path is null or empty.");
             return;
         }
-
         Context context = requireContext();
 
         if (!isExternalStorageAvailable() || isExternalStorageReadOnly()) {
@@ -146,41 +191,55 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
             return;
         }
 
+        if (!isStoragePermissionGranted()) {
+            Log.e("FileListFragment", "Storage permission not granted.");
+            return;
+        }
+
         String directory = Environment.getExternalStorageDirectory().getAbsolutePath() + "/ftp-client";
         File fileToOpen = new File(directory, file.getPath());
+
         if (!fileToOpen.getParentFile().exists()) {
-            fileToOpen.getParentFile().mkdirs();
+            if (!fileToOpen.getParentFile().mkdirs()) {
+                Log.e("FileListFragment", "Failed to create parent directories.");
+                Toast.makeText(context, "Failed to create parent directories", Toast.LENGTH_SHORT).show();
+                return;
+            }
         }
         String mimeType = getMimeType(file.getName());
 
         try {
-            fileToOpen.createNewFile();
+            if (!fileToOpen.exists()) {
+                if (!fileToOpen.createNewFile()) {
+                    Log.e("FileListFragment", "Failed to create file.");
+                    Toast.makeText(context, "Failed to create file", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+            }
+
+            Uri fileUri = FileProvider.getUriForFile(requireContext(),
+                    requireContext().getApplicationContext().getPackageName() + ".provider",
+                    fileToOpen);
+
+            // Intent to open the file
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setDataAndType(fileUri, mimeType);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+            // Create chooser to handle the intent
+            Intent chooserIntent = Intent.createChooser(intent, "Open file with...");
+
+            if (intent.resolveActivity(requireActivity().getPackageManager()) != null) {
+                startActivity(chooserIntent);
+            } else {
+                Log.e("FileListFragment", "No activity found to handle file.");
+                Toast.makeText(requireContext(), "No app installed to open this file.",
+                        Toast.LENGTH_SHORT).show();
+            }
         } catch (IOException e) {
             e.printStackTrace();
-            Log.e("FileListFragment", "Failed to create file.");
-            Toast.makeText(requireContext(), "Failed to open file.",
-                    Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        Uri fileUri = FileProvider.getUriForFile(requireContext(),
-                requireContext().getApplicationContext().getPackageName() + ".provider",
-                fileToOpen);
-
-        // Intent to open the file
-        Intent intent = new Intent(Intent.ACTION_VIEW);
-        intent.setDataAndType(fileUri, mimeType);
-        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-
-        // Create chooser to handle the intent
-        Intent chooserIntent = Intent.createChooser(intent, "Open file with...");
-
-        if (intent.resolveActivity(requireActivity().getPackageManager()) != null) {
-            startActivity(chooserIntent);
-        } else {
-            Log.e("FileListFragment", "No activity found to handle file.");
-            Toast.makeText(requireContext(), "No app installed to open this file.",
-                    Toast.LENGTH_SHORT).show();
+            Log.e("FileListFragment", "IOException: " + e.getMessage());
+            Toast.makeText(context, "Failed to open file", Toast.LENGTH_SHORT).show();
         }
     }
 
