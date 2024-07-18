@@ -41,7 +41,6 @@ import com.google.gson.JsonSyntaxException;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Type;
@@ -86,6 +85,8 @@ public class FileTransferHelper extends Fragment {
     public FileTransferHelper() {
         // Required empty public constructor
     }
+
+
 
     public void setConnectionDetails(String serverIP, int serverPort, String username, String password) {
         this.serverIP = serverIP;

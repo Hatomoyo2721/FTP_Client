@@ -18,14 +18,10 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import androidx.viewpager2.widget.ViewPager2;
 
 import com.example.ftp_client.R;
-import com.example.ftp_client.ui.file.FileListFragment;
 import com.example.ftp_client.ui.file.FileTransferHelper;
 import com.example.ftp_client.ui.utils.SharedPreferencesUtil;
-import com.google.android.material.tabs.TabLayout;
-import com.google.android.material.tabs.TabLayoutMediator;
 
 import java.io.IOException;
 import java.net.Socket;
