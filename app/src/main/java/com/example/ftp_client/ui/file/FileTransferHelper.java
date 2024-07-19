@@ -340,6 +340,9 @@ public class FileTransferHelper extends Fragment {
             String jsonFileList = gson.toJson(fileList);
             Bundle args = new Bundle();
             args.putString("fileList", jsonFileList);
+            args.putString("serverIP", serverIP);
+            args.putInt("serverPort", serverPort);
+            args.putString("username", username);
             fragment.setArguments(args);
 
             FragmentTransaction transaction = requireActivity().getSupportFragmentManager().beginTransaction();

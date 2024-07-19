@@ -1,11 +1,8 @@
 package com.example.ftp_client.ui.file;
 
-import android.Manifest;
-import android.annotation.SuppressLint;
-import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
@@ -30,8 +27,12 @@ import com.example.ftp_client.R;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.gson.Gson;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -52,7 +53,10 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
 
     private FloatingActionButton fabBackToPreviousLayout;
 
-    private static final int REQUEST_CODE_STORAGE_PERMISSION = 1;
+    private String serverIP;
+    private int serverPort;
+    private String username;
+
 
     @Nullable
     @Override
@@ -74,6 +78,9 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
         Bundle args = getArguments();
         if (args != null && args.containsKey("fileList")) {
             String jsonFileList = args.getString("fileList");
+            serverIP = args.getString("serverIP");
+            serverPort = args.getInt("serverPort");
+            username = args.getString("username");
             if (jsonFileList != null && !jsonFileList.isEmpty()) {
                 Gson gson = new Gson();
                 FileModel[] fileArray = gson.fromJson(jsonFileList, FileModel[].class);
@@ -102,19 +109,6 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
         return v;
     }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQUEST_CODE_STORAGE_PERMISSION) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Log.v("FileListFragment", "Storage permission granted.");
-            } else {
-                Log.e("FileListFragment", "Storage permission denied.");
-                Toast.makeText(requireContext(), "Storage permission is required to access files.", Toast.LENGTH_SHORT).show();
-            }
-        }
-    }
-
     private void toggleNavigationDrawerFileAction() {
         if (fabNavigationDrawerFileAction.getVisibility() == View.GONE) {
             fabNavigationDrawerFileAction.setVisibility(View.VISIBLE);
@@ -128,14 +122,7 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
         if (file.isDirectory()) {
             loadDirectory(file.getPath());
         }
-        if (isStoragePermissionGranted()) {
-            openFile(file);
-        } else {
-            Log.e("FileListFragment", "Storage permission not granted.");
-        }
-//        else {
-//            fileDownloadService.downloadFile(file.getPath());
-//        }
+        openFileFromServer(file);
     }
 
     @Override
@@ -146,6 +133,9 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
 
     private void loadDirectory(String directoryPath) {
         Bundle bundle = new Bundle();
+        bundle.putString("serverIP", serverIP);
+        bundle.putInt("serverPort", serverPort);
+        bundle.putString("username", username);
         bundle.putString("directoryPath", directoryPath);
 
         FileListFragment fragment = new FileListFragment();
@@ -157,83 +147,115 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
                 .commit();
     }
 
-    private static boolean isExternalStorageReadOnly() {
-        String extStorageState = Environment.getExternalStorageState();
-        return Environment.MEDIA_MOUNTED_READ_ONLY.equals(extStorageState);
-    }
-
-    private static boolean isExternalStorageAvailable() {
-        String extStorageState = Environment.getExternalStorageState();
-        return Environment.MEDIA_MOUNTED.equals(extStorageState);
-    }
-
-    public boolean isStoragePermissionGranted() {
-        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.READ_EXTERNAL_STORAGE)
-                == PackageManager.PERMISSION_GRANTED &&
-                ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                        == PackageManager.PERMISSION_GRANTED) {
-            Log.v("FileListFragment", "Permission is granted");
-            return true;
+    private void openFileFromServer(FileModel file) {
+        if (file.isDirectory()) {
+            loadDirectory(file.getPath());
         } else {
-            Log.v("FileListFragment", "Permission is revoked");
-            requestPermissions(new String[]{
-                    Manifest.permission.READ_EXTERNAL_STORAGE,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE
-            }, REQUEST_CODE_STORAGE_PERMISSION);
-            return false;
+            new DownloadFileTask().execute(file);
         }
     }
 
-    @SuppressLint("QueryPermissionsNeeded")
-    private void openFile(FileModel file) {
-        if (file.getPath() == null || file.getPath().isEmpty()) {
-            Log.e("FileListFragment", "File path is null or empty.");
-            return;
-        }
-        Context context = requireContext();
+    private class DownloadFileTask extends AsyncTask<FileModel, Void, File> {
+        @Override
+        protected File doInBackground(FileModel... fileModels) {
+            FileModel fileModel = fileModels[0];
+            Socket socket = null;
+            DataInputStream dataInputStream = null;
+            DataOutputStream dataOutputStream = null;
+            FileOutputStream fileOutputStream = null;
 
-        if (!isExternalStorageAvailable() || isExternalStorageReadOnly()) {
-            Log.e("FileListFragment", "External storage is not available or read-only.");
-            Toast.makeText(context, "", Toast.LENGTH_SHORT).show();
-            return;
-        }
+            try {
+                socket = new Socket(serverIP, serverPort);
+                dataInputStream = new DataInputStream(socket.getInputStream());
+                dataOutputStream = new DataOutputStream(socket.getOutputStream());
 
-        if (!isStoragePermissionGranted()) {
-            Log.e("FileListFragment", "Storage permission not granted.");
-            return;
-        }
+                // Send request to server to download file
+                dataOutputStream.writeUTF("DOWNLOAD_FILE");
+                dataOutputStream.writeUTF(fileModel.getName());
+                dataOutputStream.flush();
 
-        String directory = Environment.getExternalStorageDirectory().getAbsolutePath() + "/ftp-client";
-        File fileToOpen = new File(directory, file.getPath());
+                String response = dataInputStream.readUTF();
+                if (response.equals("FILE_FOUND")) {
+                    long fileSize = dataInputStream.readLong();
+                    byte[] fileData = new byte[(int) fileSize];
+                    int bytesRead;
+                    int totalBytesRead = 0;
 
-        if (!Objects.requireNonNull(fileToOpen.getParentFile()).exists()) {
-            if (!fileToOpen.getParentFile().mkdirs()) {
-                Log.e("FileListFragment", "Failed to create parent directories.");
-                Toast.makeText(context, "Failed to create parent directories", Toast.LENGTH_SHORT).show();
-                return;
-            }
-        }
-        String mimeType = getMimeType(file.getName());
+                    while (totalBytesRead < fileSize && (bytesRead = dataInputStream.read(fileData, totalBytesRead,
+                            (int) (fileSize - totalBytesRead))) != -1) {
+                        totalBytesRead += bytesRead;
+                    }
 
-        try {
-            if (!fileToOpen.exists()) {
-                if (!fileToOpen.createNewFile()) {
-                    Log.e("FileListFragment", "Failed to create file.");
-                    Toast.makeText(context, "Failed to create file", Toast.LENGTH_SHORT).show();
-                    return;
+                    if (totalBytesRead != fileSize) {
+                        Log.e("DownloadFileTask", "Mismatch in file size. Expected: " + fileSize + ", but read: " + totalBytesRead);
+                        return null;
+                    }
+
+                    File outputFile = new File(Environment.getExternalStoragePublicDirectory(
+                            Environment.DIRECTORY_DOWNLOADS), fileModel.getName());
+
+                    fileOutputStream = new FileOutputStream(outputFile);
+                    fileOutputStream.write(fileData, 0, (int) fileSize);
+
+                    return outputFile;
+                } else {
+                    Log.e("DownloadFileTask", "Server response: " + response);
+                    return null;
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+                Log.e("DownloadFileTask", "IOException: " + e.getMessage());
+                return null;
+            } finally {
+                try {
+                    if (socket != null) {
+                        socket.close();
+                    }
+                    if (dataInputStream != null) {
+                        dataInputStream.close();
+                    }
+                    if (dataOutputStream != null) {
+                        dataOutputStream.close();
+                    }
+                    if (fileOutputStream != null) {
+                        fileOutputStream.close();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
             }
+        }
 
+        @Override
+        protected void onPostExecute(File file) {
+            super.onPostExecute(file);
+            if (file != null) {
+                openFile(file);
+            } else {
+                Toast.makeText(requireContext(), "Failed to download file", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+
+    private void openFile(File fileToOpen) {
+        if (fileToOpen == null || !fileToOpen.exists()) {
+            Log.e("FileListFragment", "File is null or doesn't exist.");
+            Toast.makeText(requireContext(), "File doesn't exist", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String mimeType = getMimeType(fileToOpen.getName());
+
+        try {
             Uri fileUri = FileProvider.getUriForFile(requireContext(),
                     requireContext().getApplicationContext().getPackageName() + ".provider",
                     fileToOpen);
 
-            // Intent to open the file
             Intent intent = new Intent(Intent.ACTION_VIEW);
             intent.setDataAndType(fileUri, mimeType);
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
-            // Create chooser to handle the intent
             Intent chooserIntent = Intent.createChooser(intent, "Open file with...");
 
             if (intent.resolveActivity(requireActivity().getPackageManager()) != null) {
@@ -243,10 +265,10 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
                 Toast.makeText(requireContext(), "No app installed to open this file.",
                         Toast.LENGTH_SHORT).show();
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
-            Log.e("FileListFragment", "IOException: " + e.getMessage());
-            Toast.makeText(context, "Failed to open file", Toast.LENGTH_SHORT).show();
+            Log.e("FileListFragment", "Failed to open file: " + e.getMessage());
+            Toast.makeText(requireContext(), "Failed to open file", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -256,7 +278,12 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
         if (fileName != null) {
             String extension = MimeTypeMap.getFileExtensionFromUrl(fileName);
             if (extension != null) {
-                mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension);
+                MimeTypeMap mimeMap = MimeTypeMap.getSingleton();
+                mimeType = mimeMap.getMimeTypeFromExtension(extension.toLowerCase());
+
+                if (mimeType == null) {
+                    mimeType = "application/octet-stream"; // Fallback to default
+                }
             }
         }
 
