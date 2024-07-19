@@ -24,6 +24,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.ftp_client.R;
+import com.example.ftp_client.ui.connection.ConnectionModel;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.gson.Gson;
 
@@ -172,6 +173,7 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
                 // Send request to server to download file
                 dataOutputStream.writeUTF("DOWNLOAD_FILE");
                 dataOutputStream.writeUTF(fileModel.getName());
+                dataOutputStream.writeUTF(new Gson().toJson(new ConnectionModel(serverIP, serverPort, username)));
                 dataOutputStream.flush();
 
                 String response = dataInputStream.readUTF();
@@ -257,14 +259,8 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
             Intent chooserIntent = Intent.createChooser(intent, "Open file with...");
+            startActivity(chooserIntent);
 
-            if (intent.resolveActivity(requireActivity().getPackageManager()) != null) {
-                startActivity(chooserIntent);
-            } else {
-                Log.e("FileListFragment", "No activity found to handle file.");
-                Toast.makeText(requireContext(), "No app installed to open this file.",
-                        Toast.LENGTH_SHORT).show();
-            }
         } catch (Exception e) {
             e.printStackTrace();
             Log.e("FileListFragment", "Failed to open file: " + e.getMessage());

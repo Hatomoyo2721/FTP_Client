@@ -6,15 +6,15 @@
     android:padding="16dp">
 
     <Button
-        android:id="@+id/buttonDownload"
+        android:id="@+id/buttonShare"
         android:layout_width="250dp"
         android:layout_height="wrap_content"
         android:padding="16dp"
         android:layout_gravity="center"
-        android:text="Download"
+        android:text="Share"
         android:backgroundTint="@color/white"
         android:textAlignment="center"
-        android:drawableStart="@drawable/baseline_download"
+        android:drawableStart="@drawable/baseline_share"
         android:textColor="@android:color/black"
         android:layout_marginTop="8dp"/>
 
