@@ -146,7 +146,7 @@ public class AddConnectionFragment extends Fragment {
                     try (DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream());
                          DataInputStream inputStream = new DataInputStream(socket.getInputStream())) {
 
-                        outputStream.writeUTF("CONNECTION");
+                        outputStream.writeUTF("ADD_USER");
                         outputStream.writeUTF(connectionJson);
                         outputStream.flush();
 
