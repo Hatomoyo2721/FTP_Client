@@ -1,14 +1,15 @@
 package com.example.ftp_client.ui.file;
 
+import static android.app.Activity.RESULT_OK;
+
 import android.app.AlertDialog;
-import android.content.BroadcastReceiver;
-import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
+import android.provider.OpenableColumns;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -16,7 +17,6 @@ import android.view.ViewGroup;
 import android.webkit.MimeTypeMap;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -31,11 +31,11 @@ import com.example.ftp_client.R;
 import com.example.ftp_client.ui.connection.ConnectionModel;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.gson.Gson;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.Socket;
@@ -44,6 +44,10 @@ import java.util.Arrays;
 import java.util.List;
 
 public class FileListFragment extends Fragment implements FileListAdapter.OnFileClickListener {
+    private static final int PICK_FILE_REQUEST_CODE = 1;
+
+    private Uri selectedFileUri;
+
     private RecyclerView recyclerViewFiles;
     private TextView textViewNoFiles;
     private List<FileModel> fileList;
@@ -52,8 +56,6 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
     private FloatingActionButton fabCreateFolder;
     private FloatingActionButton fabOpenDrawer;
     private LinearLayout fabNavigationDrawerFileAction;
-
-    private ProgressBar progressBarReload;
 
     private FloatingActionButton fabBackToPreviousLayout;
 
@@ -65,18 +67,8 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_file_list, container, false);
-        recyclerViewFiles = v.findViewById(R.id.recyclerViewFiles);
-        textViewNoFiles = v.findViewById(R.id.textViewNoFiles);
 
-        progressBarReload = v.findViewById(R.id.progressBarReload);
-        fabBackToPreviousLayout = v.findViewById(R.id.fabBackToFileTransferLayout);
-
-        fabUploadFile = v.findViewById(R.id.fabUploadFile);
-        fabCreateFolder = v.findViewById(R.id.fabCreateDirectory);
-        fabOpenDrawer = v.findViewById(R.id.fabOpenMenuFileAction);
-        fabNavigationDrawerFileAction = v.findViewById(R.id.fabNavigationDrawerFileAction);
-
-        fileList = new ArrayList<>();
+        initializeViews(v);
 
         Bundle args = getArguments();
         if (args != null && args.containsKey("fileList")) {
@@ -105,11 +97,30 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
             recyclerViewFiles.setAdapter(adapter);
         }
 
-        fabBackToPreviousLayout.setOnClickListener(view -> getParentFragmentManager().popBackStack());
-
-        fabOpenDrawer.setOnClickListener(view -> toggleNavigationDrawerFileAction());
+        setListeners();
 
         return v;
+    }
+
+    private void initializeViews(View v) {
+        recyclerViewFiles = v.findViewById(R.id.recyclerViewFiles);
+        textViewNoFiles = v.findViewById(R.id.textViewNoFiles);
+
+        fabBackToPreviousLayout = v.findViewById(R.id.fabBackToFileTransferLayout);
+
+        fabUploadFile = v.findViewById(R.id.fabUploadFile);
+        fabCreateFolder = v.findViewById(R.id.fabCreateDirectory);
+        fabOpenDrawer = v.findViewById(R.id.fabOpenMenuFileAction);
+        fabNavigationDrawerFileAction = v.findViewById(R.id.fabNavigationDrawerFileAction);
+
+        fileList = new ArrayList<>();
+    }
+
+    private void setListeners() {
+        fabUploadFile.setOnClickListener(v -> selectFile());
+//        fabCreateFolder.setOnClickListener(v -> showCreateFolderDialog());
+        fabBackToPreviousLayout.setOnClickListener(view -> getParentFragmentManager().popBackStack());
+        fabOpenDrawer.setOnClickListener(view -> toggleNavigationDrawerFileAction());
     }
 
     private void toggleNavigationDrawerFileAction() {
@@ -132,7 +143,7 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
 
                 @Override
                 public void onDeleteClick(FileModel file) {
-
+                    deleteFile(file);
                 }
 
                 @Override
@@ -167,16 +178,56 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
                 .commit();
     }
 
-    private void renameFile(FileModel file, String newName) {
-        new RenameFileTask().execute(file, newName);
+    private void deleteFile(FileModel file) {
+        new DeleteFileTask().execute(file);
     }
 
-    private void openFileFromServer(FileModel file) {
-        if (file.isDirectory()) {
-            loadDirectory(file.getPath());
-        } else {
-            new DownloadFileTask().execute(file);
+    private class DeleteFileTask extends AsyncTask<FileModel, Void, Boolean> {
+        @Override
+        protected Boolean doInBackground(FileModel... fileModels) {
+            FileModel fileModel = fileModels[0];
+            Socket socket = null;
+            DataInputStream dataInputStream = null;
+            DataOutputStream dataOutputStream = null;
+
+            try {
+                socket = new Socket(serverIP, serverPort);
+                dataInputStream = new DataInputStream(socket.getInputStream());
+                dataOutputStream = new DataOutputStream(socket.getOutputStream());
+
+                dataOutputStream.writeUTF("DELETE_FILE_DIR_USER");
+                dataOutputStream.writeUTF(fileModel.getPath());
+                dataOutputStream.flush();
+
+                // Nhận phản hồi từ server
+                String response = dataInputStream.readUTF();
+                return response.equals("DELETE_SUCCESS");
+            } catch (IOException e) {
+                e.printStackTrace();
+                return false;
+            } finally {
+                try {
+                    if (socket != null) socket.close();
+                    if (dataInputStream != null) dataInputStream.close();
+                    if (dataOutputStream != null) dataOutputStream.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
+
+        @Override
+        protected void onPostExecute(Boolean result) {
+            if (result) {
+                Toast.makeText(requireContext(), "File deleted successfully", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(requireContext(), "Failed to delete file", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    private void renameFile(FileModel file, String newName) {
+        new RenameFileTask().execute(file, newName);
     }
 
     private void showRenameDialog(FileModel file) {
@@ -185,6 +236,7 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
 
         View viewInflated = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_rename_file, (ViewGroup) getView(), false);
         final EditText input = viewInflated.findViewById(R.id.input);
+        input.setText(file.getName());
         builder.setView(viewInflated);
 
         builder.setPositiveButton(android.R.string.ok, (dialog, which) -> {
@@ -239,6 +291,14 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
             } else {
                 Toast.makeText(requireContext(), "Failed to rename file", Toast.LENGTH_SHORT).show();
             }
+        }
+    }
+
+    private void openFileFromServer(FileModel file) {
+        if (file.isDirectory()) {
+            loadDirectory(file.getPath());
+        } else {
+            new DownloadFileTask().execute(file);
         }
     }
 
@@ -370,5 +430,117 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
         }
 
         return mimeType;
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == PICK_FILE_REQUEST_CODE && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            selectedFileUri = data.getData();
+            String fileName = getFileNameFromUri(selectedFileUri);
+            if (isAdded()) {
+                 uploadFileToServer(fileName, username);
+            }
+
+        }
+    }
+
+    private void selectFile() {
+        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+        intent.setType("*/*");
+        startActivityForResult(intent, PICK_FILE_REQUEST_CODE);
+    }
+
+    private String getFileNameFromUri(Uri uri) {
+        String fileName = null;
+        Cursor cursor = requireContext().getContentResolver().query(uri, null, null, null, null);
+        if (cursor != null && cursor.moveToFirst()) {
+            int columnIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+            if (columnIndex >= 0) {
+                fileName = cursor.getString(columnIndex);
+            }
+            cursor.close();
+        }
+        return fileName;
+    }
+
+    private void uploadFileToServer(String filePath, String username) {
+        new UploadFileTask().execute(filePath, username);
+    }
+
+    private class UploadFileTask extends AsyncTask<String, Void, Boolean> {
+        @Override
+        protected Boolean doInBackground(String... params) {
+            String filePath = params[0];
+            String username = params[1];
+            File file = new File(filePath);
+
+            if (!file.exists()) {
+                return false;
+            }
+
+            Socket socket = null;
+            DataInputStream dataInputStream = null;
+            DataOutputStream dataOutputStream = null;
+            FileInputStream fileInputStream = null;
+
+            try {
+                socket = new Socket(serverIP, serverPort);
+                dataInputStream = new DataInputStream(socket.getInputStream());
+                dataOutputStream = new DataOutputStream(socket.getOutputStream());
+
+                // Send request to server to upload file
+                dataOutputStream.writeUTF("UPLOAD_FILE_TO_DIR_USER");
+                dataOutputStream.writeUTF(file.getName());
+                dataOutputStream.writeUTF(username);
+                dataOutputStream.flush();
+
+                String response = dataInputStream.readUTF();
+                if (response.equals("READY_TO_RECEIVE")) {
+                    fileInputStream = new FileInputStream(file);
+                    byte[] buffer = new byte[4096];
+                    int bytesRead;
+                    while ((bytesRead = fileInputStream.read(buffer)) != -1) {
+                        dataOutputStream.write(buffer, 0, bytesRead);
+                    }
+                    dataOutputStream.flush();
+
+                    response = dataInputStream.readUTF();
+                    return response.equals("UPLOAD_SUCCESS");
+                } else {
+                    return false;
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+                return false;
+            } finally {
+                try {
+                    if (socket != null) {
+                        socket.close();
+                    }
+                    if (dataInputStream != null) {
+                        dataInputStream.close();
+                    }
+                    if (dataOutputStream != null) {
+                        dataOutputStream.close();
+                    }
+                    if (fileInputStream != null) {
+                        fileInputStream.close();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        @Override
+        protected void onPostExecute(Boolean result) {
+            if (result) {
+                Toast.makeText(requireContext(), "File uploaded successfully", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(requireContext(), "Failed to upload file", Toast.LENGTH_SHORT).show();
+            }
+        }
     }
 }
