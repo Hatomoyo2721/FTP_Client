@@ -23,6 +23,7 @@ public class BottomSheetFileActionFragment extends BottomSheetDialogFragment {
         void onRenameClick(FileModel file);
         void onDeleteClick(FileModel file);
         void onDownloadClick(FileModel file);
+        void onShareClick(FileModel file);
     }
 
     public static BottomSheetFileActionFragment newInstance(FileModel file) {
@@ -48,7 +49,8 @@ public class BottomSheetFileActionFragment extends BottomSheetDialogFragment {
 
         Button btnRename = view.findViewById(R.id.buttonRename);
         Button btnDelete = view.findViewById(R.id.buttonDelete);
-        Button btnDownload = view.findViewById(R.id.buttonDownload);
+        Button btnShare = view.findViewById(R.id.buttonShare);
+        Button btnDownloadAndOpen = view.findViewById(R.id.buttonDownloadAndOpenFile);
 
         btnRename.setOnClickListener(v -> {
             if (mListener != null) {
@@ -64,11 +66,17 @@ public class BottomSheetFileActionFragment extends BottomSheetDialogFragment {
             dismiss();
         });
 
-        btnDownload.setOnClickListener(v -> {
+        btnShare.setOnClickListener(v -> {
+            if (mListener != null) {
+                mListener.onShareClick(file);
+            }
+            dismiss();
+        });
+
+        btnDownloadAndOpen.setOnClickListener(v -> {
             if (mListener != null) {
                 mListener.onDownloadClick(file);
             }
-            dismiss();
         });
 
         return view;

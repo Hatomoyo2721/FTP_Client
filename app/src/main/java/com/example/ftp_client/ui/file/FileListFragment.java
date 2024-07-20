@@ -1,6 +1,10 @@
 package com.example.ftp_client.ui.file;
 
+import android.app.AlertDialog;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -10,6 +14,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.MimeTypeMap;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -17,7 +22,6 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -27,6 +31,7 @@ import com.example.ftp_client.R;
 import com.example.ftp_client.ui.connection.ConnectionModel;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.gson.Gson;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -37,10 +42,8 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 
 public class FileListFragment extends Fragment implements FileListAdapter.OnFileClickListener {
-
     private RecyclerView recyclerViewFiles;
     private TextView textViewNoFiles;
     private List<FileModel> fileList;
@@ -57,7 +60,6 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
     private String serverIP;
     private int serverPort;
     private String username;
-
 
     @Nullable
     @Override
@@ -120,16 +122,33 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
 
     @Override
     public void onFileClick(FileModel file) {
-        if (file.isDirectory()) {
+        if (!file.isDirectory()) {
+            BottomSheetFileActionFragment bottomSheet = BottomSheetFileActionFragment.newInstance(file);
+            bottomSheet.setBottomSheetListener(new BottomSheetFileActionFragment.BottomSheetListener() {
+                @Override
+                public void onRenameClick(FileModel file) {
+                    showRenameDialog(file);
+                }
+
+                @Override
+                public void onDeleteClick(FileModel file) {
+
+                }
+
+                @Override
+                public void onDownloadClick(FileModel file) {
+                    openFileFromServer(file);
+                }
+
+                @Override
+                public void onShareClick(FileModel file) {
+
+                }
+            });
+            bottomSheet.show(requireFragmentManager(), bottomSheet.getTag());
+        } else {
             loadDirectory(file.getPath());
         }
-        openFileFromServer(file);
-    }
-
-    @Override
-    public void onFileLongClick(FileModel file) {
-        BottomSheetFileActionFragment bottomSheet = BottomSheetFileActionFragment.newInstance(file);
-        bottomSheet.show(requireFragmentManager(), bottomSheet.getTag());
     }
 
     private void loadDirectory(String directoryPath) {
@@ -148,11 +167,78 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
                 .commit();
     }
 
+    private void renameFile(FileModel file, String newName) {
+        new RenameFileTask().execute(file, newName);
+    }
+
     private void openFileFromServer(FileModel file) {
         if (file.isDirectory()) {
             loadDirectory(file.getPath());
         } else {
             new DownloadFileTask().execute(file);
+        }
+    }
+
+    private void showRenameDialog(FileModel file) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        builder.setTitle("Rename File");
+
+        View viewInflated = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_rename_file, (ViewGroup) getView(), false);
+        final EditText input = viewInflated.findViewById(R.id.input);
+        builder.setView(viewInflated);
+
+        builder.setPositiveButton(android.R.string.ok, (dialog, which) -> {
+            dialog.dismiss();
+            String newName = input.getText().toString();
+            renameFile(file, newName);
+        });
+        builder.setNegativeButton(android.R.string.cancel, (dialog, which) -> dialog.cancel());
+
+        builder.show();
+    }
+
+    private class RenameFileTask extends AsyncTask<Object, Void, Boolean> {
+        @Override
+        protected Boolean doInBackground(Object... params) {
+            FileModel file = (FileModel) params[0];
+            String newName = (String) params[1];
+            Socket socket = null;
+            DataInputStream dataInputStream = null;
+            DataOutputStream dataOutputStream = null;
+
+            try {
+                socket = new Socket(serverIP, serverPort);
+                dataInputStream = new DataInputStream(socket.getInputStream());
+                dataOutputStream = new DataOutputStream(socket.getOutputStream());
+
+                dataOutputStream.writeUTF("RENAME_FILE");
+                dataOutputStream.writeUTF(file.getPath());
+                dataOutputStream.writeUTF(newName);
+                dataOutputStream.flush();
+
+                String response = dataInputStream.readUTF();
+                return response.equals("RENAME_SUCCESS");
+            } catch (IOException e) {
+                e.printStackTrace();
+                return false;
+            } finally {
+                try {
+                    if (socket != null) socket.close();
+                    if (dataInputStream != null) dataInputStream.close();
+                    if (dataOutputStream != null) dataOutputStream.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        @Override
+        protected void onPostExecute(Boolean result) {
+            if (result) {
+                Toast.makeText(requireContext(), "File renamed successfully", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(requireContext(), "Failed to rename file", Toast.LENGTH_SHORT).show();
+            }
         }
     }
 
