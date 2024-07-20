@@ -24,6 +24,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -118,7 +119,7 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
 
     private void setListeners() {
         fabUploadFile.setOnClickListener(v -> selectFile());
-//        fabCreateFolder.setOnClickListener(v -> showCreateFolderDialog());
+        fabCreateFolder.setOnClickListener(v -> showCreateFolderDialog());
         fabBackToPreviousLayout.setOnClickListener(view -> getParentFragmentManager().popBackStack());
         fabOpenDrawer.setOnClickListener(view -> toggleNavigationDrawerFileAction());
     }
@@ -290,6 +291,83 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
                 Toast.makeText(requireContext(), "File renamed successfully", Toast.LENGTH_SHORT).show();
             } else {
                 Toast.makeText(requireContext(), "Failed to rename file", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    private void showCreateFolderDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        builder.setTitle("Create New Folder");
+
+        View viewInflated = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_create_folder, (ViewGroup) getView(), false);
+        final EditText input = viewInflated.findViewById(R.id.input);
+        builder.setView(viewInflated);
+
+        builder.setPositiveButton(android.R.string.ok, (dialog, which) -> {
+            dialog.dismiss();
+            String folderName = input.getText().toString().trim();
+            if (isFolderNameValid(folderName)) {
+                createFolder(folderName);
+            } else {
+                Toast.makeText(requireContext(), "Folder name is invalid. Please use only alphanumeric characters and spaces.", Toast.LENGTH_LONG).show();
+            }
+        });
+        builder.setNegativeButton(android.R.string.cancel, (dialog, which) -> dialog.cancel());
+
+        builder.show();
+    }
+
+    private boolean isFolderNameValid(String folderName) {
+        String regex = "^[^/\\\\:*?\"<>|]+$";
+        return folderName.matches(regex);
+    }
+
+
+    private void createFolder(String folderName) {
+        new CreateFolderTask().execute(username, folderName);
+    }
+
+    private class CreateFolderTask extends AsyncTask<String, Void, Boolean> {
+        @Override
+        protected Boolean doInBackground(String... params) {
+            String parentDirPath = params[0];
+            String folderName = params[1];
+            Socket socket = null;
+            DataInputStream dataInputStream = null;
+            DataOutputStream dataOutputStream = null;
+
+            try {
+                socket = new Socket(serverIP, serverPort);
+                dataInputStream = new DataInputStream(socket.getInputStream());
+                dataOutputStream = new DataOutputStream(socket.getOutputStream());
+
+                dataOutputStream.writeUTF("CREATE_NEW_DIR");
+                dataOutputStream.writeUTF(parentDirPath);
+                dataOutputStream.writeUTF(folderName);
+                dataOutputStream.flush();
+
+                String response = dataInputStream.readUTF();
+                return response.equals("CREATE_SUCCESS");
+            } catch (IOException e) {
+                e.printStackTrace();
+                return false;
+            } finally {
+                try {
+                    if (socket != null) socket.close();
+                    if (dataInputStream != null) dataInputStream.close();
+                    if (dataOutputStream != null) dataOutputStream.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        @Override
+        protected void onPostExecute(Boolean result) {
+            if (result) {
+                Toast.makeText(requireContext(), "Folder created successfully", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(requireContext(), "Failed to create folder", Toast.LENGTH_SHORT).show();
             }
         }
     }
