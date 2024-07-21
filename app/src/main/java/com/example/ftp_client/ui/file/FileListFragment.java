@@ -24,7 +24,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -36,9 +35,10 @@ import com.google.gson.Gson;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -516,11 +516,9 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
 
         if (requestCode == PICK_FILE_REQUEST_CODE && resultCode == RESULT_OK && data != null && data.getData() != null) {
             selectedFileUri = data.getData();
-            String fileName = getFileNameFromUri(selectedFileUri);
-            if (isAdded()) {
-                 uploadFileToServer(fileName, username);
-            }
-
+//            String path = getFilePathFromUri(selectedFileUri);
+//            String fileName = getFileNameFromUri(selectedFileUri);
+            new UploadFileTask().execute("");
         }
     }
 
@@ -543,25 +541,27 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
         return fileName;
     }
 
-    private void uploadFileToServer(String filePath, String username) {
-        new UploadFileTask().execute(filePath, username);
-    }
+//    private void uploadFileToServer(Uri selectedFileUri, String username) {
+//        new UploadFileTask().execute(selectedFileUri, username);
+//    }
 
     private class UploadFileTask extends AsyncTask<String, Void, Boolean> {
         @Override
         protected Boolean doInBackground(String... params) {
-            String filePath = params[0];
-            String username = params[1];
-            File file = new File(filePath);
+            InputStream inputStream;
+            try {
+                inputStream = requireContext().getContentResolver().openInputStream(selectedFileUri);
+            } catch (FileNotFoundException e) {
+                return false;
+            }
 
-            if (!file.exists()) {
+            if (inputStream == null) {
                 return false;
             }
 
             Socket socket = null;
             DataInputStream dataInputStream = null;
             DataOutputStream dataOutputStream = null;
-            FileInputStream fileInputStream = null;
 
             try {
                 socket = new Socket(serverIP, serverPort);
@@ -569,20 +569,20 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
                 dataOutputStream = new DataOutputStream(socket.getOutputStream());
 
                 // Send request to server to upload file
-                dataOutputStream.writeUTF("UPLOAD_FILE_TO_DIR_USER");
-                dataOutputStream.writeUTF(file.getName());
+                dataOutputStream.writeUTF("UPLOAD_FILE");
+                dataOutputStream.writeUTF(getFileNameFromUri(selectedFileUri));
                 dataOutputStream.writeUTF(username);
                 dataOutputStream.flush();
 
                 String response = dataInputStream.readUTF();
                 if (response.equals("READY_TO_RECEIVE")) {
-                    fileInputStream = new FileInputStream(file);
                     byte[] buffer = new byte[4096];
                     int bytesRead;
-                    while ((bytesRead = fileInputStream.read(buffer)) != -1) {
+                    while ((bytesRead = inputStream.read(buffer)) != -1) {
                         dataOutputStream.write(buffer, 0, bytesRead);
                     }
                     dataOutputStream.flush();
+                    dataOutputStream.close();
 
                     response = dataInputStream.readUTF();
                     return response.equals("UPLOAD_SUCCESS");
@@ -594,18 +594,16 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
                 return false;
             } finally {
                 try {
-                    if (socket != null) {
-                        socket.close();
-                    }
                     if (dataInputStream != null) {
                         dataInputStream.close();
                     }
                     if (dataOutputStream != null) {
                         dataOutputStream.close();
                     }
-                    if (fileInputStream != null) {
-                        fileInputStream.close();
+                    if (socket != null) {
+                        socket.close();
                     }
+//                    inputStream.close();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
