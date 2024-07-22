@@ -2,7 +2,9 @@ package com.example.ftp_client.ui.file;
 
 import static android.app.Activity.RESULT_OK;
 
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
@@ -17,6 +19,7 @@ import android.view.ViewGroup;
 import android.webkit.MimeTypeMap;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -46,7 +49,6 @@ import java.util.List;
 
 public class FileListFragment extends Fragment implements FileListAdapter.OnFileClickListener {
     private static final int PICK_FILE_REQUEST_CODE = 1;
-
     private Uri selectedFileUri;
 
     private RecyclerView recyclerViewFiles;
@@ -57,12 +59,13 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
     private FloatingActionButton fabCreateFolder;
     private FloatingActionButton fabOpenDrawer;
     private LinearLayout fabNavigationDrawerFileAction;
-
     private FloatingActionButton fabBackToPreviousLayout;
+    private ProgressBar progressBar;
 
     private String serverIP;
     private int serverPort;
     private String username;
+
 
     @Nullable
     @Override
@@ -106,15 +109,17 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
     private void initializeViews(View v) {
         recyclerViewFiles = v.findViewById(R.id.recyclerViewFiles);
         textViewNoFiles = v.findViewById(R.id.textViewNoFiles);
-
         fabBackToPreviousLayout = v.findViewById(R.id.fabBackToFileTransferLayout);
-
         fabUploadFile = v.findViewById(R.id.fabUploadFile);
         fabCreateFolder = v.findViewById(R.id.fabCreateDirectory);
         fabOpenDrawer = v.findViewById(R.id.fabOpenMenuFileAction);
         fabNavigationDrawerFileAction = v.findViewById(R.id.fabNavigationDrawerFileAction);
-
+        progressBar = v.findViewById(R.id.progressBar);
         fileList = new ArrayList<>();
+//        progressDialog = new ProgressDialog(requireContext());
+//        progressDialog.setTitle("Downloading File");
+//        progressDialog.setMessage("Please wait...");
+//        progressDialog.setCancelable(false);
     }
 
     private void setListeners() {
@@ -380,7 +385,13 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
         }
     }
 
-    private class DownloadFileTask extends AsyncTask<FileModel, Void, File> {
+    private class DownloadFileTask extends AsyncTask<FileModel, Integer, File> {
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            progressBar.setVisibility(View.VISIBLE);
+        }
+
         @Override
         protected File doInBackground(FileModel... fileModels) {
             FileModel fileModel = fileModels[0];
@@ -403,22 +414,25 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
                 String response = dataInputStream.readUTF();
                 if (response.equals("FILE_FOUND")) {
                     long fileSize = dataInputStream.readLong();
+//                    byte[] buffer = new byte[8096];
                     byte[] fileData = new byte[(int) fileSize];
                     int bytesRead;
                     int totalBytesRead = 0;
+
+
 
                     while (totalBytesRead < fileSize && (bytesRead = dataInputStream.read(fileData, totalBytesRead,
                             (int) (fileSize - totalBytesRead))) != -1) {
                         totalBytesRead += bytesRead;
                     }
 
+                    File outputFile = new File(Environment.getExternalStoragePublicDirectory(
+                            Environment.DIRECTORY_DOWNLOADS), fileModel.getName());
+
                     if (totalBytesRead != fileSize) {
                         Log.e("DownloadFileTask", "Mismatch in file size. Expected: " + fileSize + ", but read: " + totalBytesRead);
                         return null;
                     }
-
-                    File outputFile = new File(Environment.getExternalStoragePublicDirectory(
-                            Environment.DIRECTORY_DOWNLOADS), fileModel.getName());
 
                     fileOutputStream = new FileOutputStream(outputFile);
                     fileOutputStream.write(fileData, 0, (int) fileSize);
@@ -434,18 +448,10 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
                 return null;
             } finally {
                 try {
-                    if (socket != null) {
-                        socket.close();
-                    }
-                    if (dataInputStream != null) {
-                        dataInputStream.close();
-                    }
-                    if (dataOutputStream != null) {
-                        dataOutputStream.close();
-                    }
-                    if (fileOutputStream != null) {
-                        fileOutputStream.close();
-                    }
+                    if (socket != null) { socket.close(); }
+                    if (dataInputStream != null) { dataInputStream.close(); }
+                    if (dataOutputStream != null) { dataOutputStream.close(); }
+                    if (fileOutputStream != null) { fileOutputStream.close(); }
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -455,6 +461,7 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
         @Override
         protected void onPostExecute(File file) {
             super.onPostExecute(file);
+            progressBar.setVisibility(View.GONE);
             if (file != null) {
                 openFile(file);
             } else {
@@ -516,9 +523,7 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
 
         if (requestCode == PICK_FILE_REQUEST_CODE && resultCode == RESULT_OK && data != null && data.getData() != null) {
             selectedFileUri = data.getData();
-//            String path = getFilePathFromUri(selectedFileUri);
-//            String fileName = getFileNameFromUri(selectedFileUri);
-            new UploadFileTask().execute("");
+            uploadFile();
         }
     }
 
@@ -541,9 +546,16 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
         return fileName;
     }
 
-//    private void uploadFileToServer(Uri selectedFileUri, String username) {
-//        new UploadFileTask().execute(selectedFileUri, username);
-//    }
+    private void uploadFile() {
+        if (selectedFileUri != null) {
+            Cursor cursor = requireContext().getContentResolver().query(selectedFileUri, null, null, null, null);
+            if (cursor != null && cursor.moveToFirst()) {
+                @SuppressLint("Range") String fileName = cursor.getString(cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME));
+                cursor.close();
+                new UploadFileTask().execute("", fileName);
+            }
+        }
+    }
 
     private class UploadFileTask extends AsyncTask<String, Void, Boolean> {
         @Override
@@ -594,16 +606,9 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
                 return false;
             } finally {
                 try {
-                    if (dataInputStream != null) {
-                        dataInputStream.close();
-                    }
-                    if (dataOutputStream != null) {
-                        dataOutputStream.close();
-                    }
-                    if (socket != null) {
-                        socket.close();
-                    }
-//                    inputStream.close();
+                    if (dataInputStream != null) dataInputStream.close();
+                    if (dataOutputStream != null) dataOutputStream.close();
+                    if (socket != null) socket.close();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -620,3 +625,62 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
         }
     }
 }
+
+//        private long previousTime;
+//        private long previousBytesRead;
+
+//        @Override
+//        protected void onPreExecute() {
+//            super.onPreExecute();
+//            progressDialog.show();
+//            previousTime = System.currentTimeMillis();
+//            previousBytesRead = 0;
+//        }
+
+//                    File outputFile = new File(Environment.getExternalStoragePublicDirectory(
+//                            Environment.DIRECTORY_DOWNLOADS), fileModel.getName());
+//                    fileOutputStream = new FileOutputStream(outputFile);
+//
+//                    long previousBytesRead = 0;
+//
+//                    while ((bytesRead = dataInputStream.read(buffer)) != -1) {
+//                        fileOutputStream.write(buffer, 0, bytesRead);
+//                        totalBytesRead += bytesRead;
+
+//                        long currentTime = System.currentTimeMillis();
+//                        long elapsedTime = currentTime - previousTime;
+//
+//                        if (elapsedTime > 1000) { // Update progress every second
+//                            int progress = (int) (totalBytesRead * 100 / fileSize);
+//
+//                            long bytesReadInLastSecond = totalBytesRead - previousBytesRead;
+//                            double speedBps = bytesReadInLastSecond * 1000.0 / elapsedTime; // Bytes per second
+//                            double speedKBps = speedBps / 1024.0; // Convert to KB/s
+//                            double speedMBps = speedKBps / 1024.0; // Convert to MB/s
+//
+//                            publishProgress(progress, (totalBytesRead / (1024 * 1024)),
+//                                    (int) (fileSize / (1024 * 1024)),
+//                                    (int) speedMBps);
+//
+//                            previousBytesRead = totalBytesRead;
+//                            previousTime = currentTime;
+//                        }
+//                    }
+
+
+//        @SuppressLint("DefaultLocale")
+//        @Override
+//        protected void onProgressUpdate(Integer... values) {
+//            super.onProgressUpdate(values);
+//            int progress = values[0];
+//            int downloadedMB = values[1];
+//            int totalMB = values[2];
+//            double speedMBps = values[3];
+//            String speedText = String.format("%.1f MB/s", speedMBps); // Display MB/s with one decimal place
+//
+//            progressDialog.setProgress(progress);
+//            progressDialog.setMessage(String.format("Downloading: %dMB / %dMB\nSpeed: %s", downloadedMB, totalMB, speedText));
+//            if (progressDialog.isShowing()) {
+//                progressDialog.dismiss();
+//            }
+//        }
