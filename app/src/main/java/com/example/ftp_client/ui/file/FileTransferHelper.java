@@ -265,6 +265,11 @@ public class FileTransferHelper extends Fragment {
             });
         }
     }
+    private boolean isNetworkConnected() {
+        ConnectivityManager cm = (ConnectivityManager) requireContext().getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
+        return activeNetwork != null && activeNetwork.isConnectedOrConnecting();
+    }
 
     //===========================//
     /* Handle with Directory */
@@ -274,12 +279,6 @@ public class FileTransferHelper extends Fragment {
         } else {
             Toast.makeText(requireContext(), "No network connection", Toast.LENGTH_SHORT).show();
         }
-    }
-
-    private boolean isNetworkConnected() {
-        ConnectivityManager cm = (ConnectivityManager) requireContext().getSystemService(Context.CONNECTIVITY_SERVICE);
-        NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
-        return activeNetwork != null && activeNetwork.isConnectedOrConnecting();
     }
 
     private class LoadDirectoryTask extends AsyncTask<String, Void, List<FileModel>> {
@@ -324,16 +323,6 @@ public class FileTransferHelper extends Fragment {
             }
         }
 
-        private void showAlert(String message) {
-            if (isAdded()) {
-                new AlertDialog.Builder(requireContext())
-                        .setTitle("Error")
-                        .setMessage(message)
-                        .setPositiveButton("OK", (dialog, which) -> dialog.dismiss())
-                        .show();
-            }
-        }
-
         private void showFileListFragment(List<FileModel> fileList) {
             FileListFragment fragment = new FileListFragment();
             Gson gson = new Gson();
@@ -349,6 +338,16 @@ public class FileTransferHelper extends Fragment {
             transaction.replace(R.id.fragment_container, fragment);
             transaction.addToBackStack(null);
             transaction.commit();
+        }
+
+        private void showAlert(String message) {
+            if (isAdded()) {
+                new AlertDialog.Builder(requireContext())
+                        .setTitle("Error")
+                        .setMessage(message)
+                        .setPositiveButton("OK", (dialog, which) -> dialog.dismiss())
+                        .show();
+            }
         }
     }
 

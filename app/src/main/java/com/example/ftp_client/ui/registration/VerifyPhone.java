@@ -180,7 +180,7 @@ public class VerifyPhone extends AppCompatActivity {
                     }
                 });
     }
-
+    
     private void saveUserToDatabase(String email, String password) {
         String userId = Objects.requireNonNull(firebaseAuth.getCurrentUser()).getUid();
         UserStorage userStorage = new UserStorage(email, password);

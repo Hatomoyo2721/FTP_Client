@@ -61,6 +61,7 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
     private LinearLayout fabNavigationDrawerFileAction;
     private FloatingActionButton fabBackToPreviousLayout;
     private ProgressBar progressBar;
+    private View blockingView;
 
     private String serverIP;
     private int serverPort;
@@ -115,6 +116,7 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
         fabOpenDrawer = v.findViewById(R.id.fabOpenMenuFileAction);
         fabNavigationDrawerFileAction = v.findViewById(R.id.fabNavigationDrawerFileAction);
         progressBar = v.findViewById(R.id.progressBar);
+        blockingView = v.findViewById(R.id.blockingView);
         fileList = new ArrayList<>();
 //        progressDialog = new ProgressDialog(requireContext());
 //        progressDialog.setTitle("Downloading File");
@@ -238,7 +240,7 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
 
     private void showRenameDialog(FileModel file) {
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
-        builder.setTitle("Rename File");
+           builder.setTitle("Rename File");
 
         View viewInflated = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_rename_file, (ViewGroup) getView(), false);
         final EditText input = viewInflated.findViewById(R.id.input);
@@ -390,6 +392,10 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
         protected void onPreExecute() {
             super.onPreExecute();
             progressBar.setVisibility(View.VISIBLE);
+            blockingView.setVisibility(View.VISIBLE);
+            recyclerViewFiles.setClickable(false);
+            fabOpenDrawer.setClickable(false);
+            fabNavigationDrawerFileAction.setClickable(false);
         }
 
         @Override
@@ -420,7 +426,6 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
                     int totalBytesRead = 0;
 
 
-
                     while (totalBytesRead < fileSize && (bytesRead = dataInputStream.read(fileData, totalBytesRead,
                             (int) (fileSize - totalBytesRead))) != -1) {
                         totalBytesRead += bytesRead;
@@ -430,7 +435,8 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
                             Environment.DIRECTORY_DOWNLOADS), fileModel.getName());
 
                     if (totalBytesRead != fileSize) {
-                        Log.e("DownloadFileTask", "Mismatch in file size. Expected: " + fileSize + ", but read: " + totalBytesRead);
+                        Log.e("DownloadFileTask", "Mismatch in file size. Expected: " + fileSize + ", but read: "
+                                + totalBytesRead);
                         return null;
                     }
 
@@ -462,6 +468,10 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
         protected void onPostExecute(File file) {
             super.onPostExecute(file);
             progressBar.setVisibility(View.GONE);
+            blockingView.setVisibility(View.GONE);
+            recyclerViewFiles.setClickable(true);
+            fabOpenDrawer.setClickable(true);
+            fabNavigationDrawerFileAction.setClickable(true);
             if (file != null) {
                 openFile(file);
             } else {
@@ -535,7 +545,8 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
 
     private String getFileNameFromUri(Uri uri) {
         String fileName = null;
-        Cursor cursor = requireContext().getContentResolver().query(uri, null, null, null, null);
+        Cursor cursor = requireContext().getContentResolver().query(
+                uri, null, null, null, null);
         if (cursor != null && cursor.moveToFirst()) {
             int columnIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
             if (columnIndex >= 0) {
@@ -546,31 +557,46 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
         return fileName;
     }
 
-    private void uploadFile() {
-        if (selectedFileUri != null) {
-            Cursor cursor = requireContext().getContentResolver().query(selectedFileUri, null, null, null, null);
-            if (cursor != null && cursor.moveToFirst()) {
-                @SuppressLint("Range") String fileName = cursor.getString(cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME));
-                cursor.close();
-                new UploadFileTask().execute("", fileName);
+    private long getFileSize(Uri fileUri) {
+        InputStream inputStream = null;
+        try {
+            inputStream = requireContext().getContentResolver().openInputStream(fileUri);
+            long fileSize = inputStream != null ? inputStream.available() : 0;
+            if (inputStream != null) {
+                inputStream.close();
             }
+            return fileSize;
+        } catch (IOException e) {
+            return -1;
         }
     }
 
-    private class UploadFileTask extends AsyncTask<String, Void, Boolean> {
+    private void uploadFile() {
+//        if (selectedFileUri != null) {
+//            Cursor cursor = requireContext().getContentResolver().query(selectedFileUri, null, null, null, null);
+//            if (cursor != null && cursor.moveToFirst()) {
+//                @SuppressLint("Range") String fileName = cursor.getString(cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME));
+//                cursor.close();
+        new UploadFileTask().execute(getFileSize(selectedFileUri));
+//            }
+//        }
+    }
+
+    private class UploadFileTask extends AsyncTask<Long, Void, Boolean> {
+        @SuppressLint("Recycle")
         @Override
-        protected Boolean doInBackground(String... params) {
+        protected Boolean doInBackground(Long... params) {
+            long fileSize = params[0];
+
             InputStream inputStream;
             try {
                 inputStream = requireContext().getContentResolver().openInputStream(selectedFileUri);
             } catch (FileNotFoundException e) {
                 return false;
             }
-
             if (inputStream == null) {
                 return false;
             }
-
             Socket socket = null;
             DataInputStream dataInputStream = null;
             DataOutputStream dataOutputStream = null;
@@ -584,6 +610,7 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
                 dataOutputStream.writeUTF("UPLOAD_FILE");
                 dataOutputStream.writeUTF(getFileNameFromUri(selectedFileUri));
                 dataOutputStream.writeUTF(username);
+                dataOutputStream.writeLong(fileSize);
                 dataOutputStream.flush();
 
                 String response = dataInputStream.readUTF();
@@ -591,10 +618,10 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
                     byte[] buffer = new byte[4096];
                     int bytesRead;
                     while ((bytesRead = inputStream.read(buffer)) != -1) {
+                        Log.d("", "doInBackground: " + bytesRead + " bytes");
                         dataOutputStream.write(buffer, 0, bytesRead);
+                        dataOutputStream.flush();
                     }
-                    dataOutputStream.flush();
-                    dataOutputStream.close();
 
                     response = dataInputStream.readUTF();
                     return response.equals("UPLOAD_SUCCESS");
@@ -606,6 +633,7 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
                 return false;
             } finally {
                 try {
+                    inputStream.close();
                     if (dataInputStream != null) dataInputStream.close();
                     if (dataOutputStream != null) dataOutputStream.close();
                     if (socket != null) socket.close();

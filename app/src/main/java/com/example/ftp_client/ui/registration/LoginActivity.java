@@ -55,21 +55,16 @@ public class LoginActivity extends AppCompatActivity {
         btnShowPassword = findViewById(R.id.togglePasswordLog);
 
         databaseReference = FirebaseDatabase.getInstance().getReference("users");
-
         tvRegister.setOnClickListener(v -> {
             Intent i = new Intent(LoginActivity.this, RegisterActivity.class);
             startActivity(i);
         });
-
-        tvForgotPass.setOnClickListener(v -> {
-            Intent i = new Intent(LoginActivity.this, ForgotPasswordActivity.class);
-            startActivity(i);
-        });
-
+//        tvForgotPass.setOnClickListener(v -> {
+////            Intent i = new Intent(LoginActivity.this, ForgotPasswordActivity.class);
+//            startActivity(i);
+//        });
         btnLogin.setOnClickListener(v -> loginUser());
-
         btnShowPassword.setOnClickListener(v -> togglePasswordVisibility());
-
         checkAndRequestPermissions();
     }
 
@@ -136,9 +131,9 @@ public class LoginActivity extends AppCompatActivity {
                 Log.d("LoginActivity", "Database error: " + databaseError.getMessage());
                 Log.d("LoginActivity", "Details: " + databaseError.getDetails());
                 Log.d("LoginActivity", "Code: " + databaseError.getCode());
-                Toast.makeText(LoginActivity.this, "Database error: " + databaseError.getMessage(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(LoginActivity.this,
+                        "Database error: " + databaseError.getMessage(), Toast.LENGTH_SHORT).show();
             }
-
         });
     }
 
@@ -164,7 +159,9 @@ public class LoginActivity extends AppCompatActivity {
         }
 
         if (!permissionsToRequest.isEmpty()) {
-            ActivityCompat.requestPermissions(this, permissionsToRequest.toArray(new String[0]), PERMISSION_REQUEST_CODE);
+            ActivityCompat.requestPermissions(this,
+                    permissionsToRequest.toArray(new String[0]),
+                    PERMISSION_REQUEST_CODE);
         }
     }
 
