@@ -12,7 +12,7 @@ public class FileModel implements Parcelable {
     private String type;
     private String path;
 
-    public FileModel(String name, String type, String path, String baseUrl) {
+    public FileModel(String name, String type, String path) {
         this.name = name;
         this.type = type;
         this.path = path;
@@ -30,7 +30,6 @@ public class FileModel implements Parcelable {
         return path;
     }
 
-
     public boolean isFile() {
         return type.equals(TYPE_FILE);
     }
@@ -42,7 +41,6 @@ public class FileModel implements Parcelable {
     public boolean isImage() {
         return type.equals(TYPE_IMAGE);
     }
-
 
     // Parcelable implementation
     protected FileModel(Parcel in) {

@@ -41,7 +41,7 @@
         android:usesCleartextTraffic="true"
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
-        android:enableOnBackInvokedCallback="true"
+        android:enableOnBackInvokedCallback="false"
         tools:targetApi="34">
 
         <provider
@@ -54,9 +54,9 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
-        <activity
-            android:name=".ui.registration.ForgotPasswordActivity"
-            android:exported="false" />
+<!--        <activity-->
+<!--            android:name=".ui.registration.ForgotPasswordActivity"-->
+<!--            android:exported="false" />-->
 
         <activity
             android:name=".ui.registration.LoginActivity"

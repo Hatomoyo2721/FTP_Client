@@ -5,6 +5,7 @@ import static android.app.Activity.RESULT_OK;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
@@ -16,6 +17,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.InputMethodManager;
 import android.webkit.MimeTypeMap;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -46,8 +48,9 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
-public class FileListFragment extends Fragment implements FileListAdapter.OnFileClickListener {
+public class FileListFragment extends Fragment implements FileListAdapter.OnFileClickListener, FileListAdapter.OnFolderLongClickListener {
     private static final int PICK_FILE_REQUEST_CODE = 1;
     private Uri selectedFileUri;
 
@@ -97,7 +100,7 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
             textViewNoFiles.setVisibility(View.GONE);
             recyclerViewFiles.setVisibility(View.VISIBLE);
 
-            FileListAdapter adapter = new FileListAdapter(requireContext(), fileList, this);
+            FileListAdapter adapter = new FileListAdapter(requireContext(), fileList, this, this);
             recyclerViewFiles.setLayoutManager(new LinearLayoutManager(requireContext()));
             recyclerViewFiles.setAdapter(adapter);
         }
@@ -136,6 +139,25 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
             fabNavigationDrawerFileAction.setVisibility(View.VISIBLE);
         } else {
             fabNavigationDrawerFileAction.setVisibility(View.GONE);
+        }
+    }
+
+    @Override
+    public void onFolderLongClick(FileModel file) {
+        if (file.isDirectory()) {
+            BottomSheetDirectoryActionFragment bottomSheet = BottomSheetDirectoryActionFragment.newInstance(file);
+            bottomSheet.setBottomSheetListener(new BottomSheetDirectoryActionFragment.BottomSheetListener() {
+                @Override
+                public void onRenameClick(FileModel file) {
+                    showRenameFolderBox(file);
+                }
+
+                @Override
+                public void onDeleteClick(FileModel file) {
+                    deleteFolder(file);
+                }
+            });
+            bottomSheet.show(requireFragmentManager(), bottomSheet.getTag());
         }
     }
 
@@ -227,7 +249,7 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
         @Override
         protected void onPostExecute(Boolean result) {
             if (result) {
-                Toast.makeText(requireContext(), "File deleted successfully", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), "Deleted file successfully", Toast.LENGTH_SHORT).show();
             } else {
                 Toast.makeText(requireContext(), "Failed to delete file", Toast.LENGTH_SHORT).show();
             }
@@ -240,7 +262,7 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
 
     private void showRenameDialog(FileModel file) {
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
-           builder.setTitle("Rename File");
+        builder.setTitle("Rename File");
 
         View viewInflated = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_rename_file, (ViewGroup) getView(), false);
         final EditText input = viewInflated.findViewById(R.id.input);
@@ -248,14 +270,14 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
         builder.setView(viewInflated);
 
         builder.setPositiveButton(android.R.string.ok, (dialog, which) -> {
-            dialog.dismiss();
             String newName = input.getText().toString();
             renameFile(file, newName);
+            dialog.dismiss();
         });
         builder.setNegativeButton(android.R.string.cancel, (dialog, which) -> dialog.cancel());
-
         builder.show();
     }
+
 
     private class RenameFileTask extends AsyncTask<Object, Void, Boolean> {
         @Override
@@ -295,7 +317,7 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
         @Override
         protected void onPostExecute(Boolean result) {
             if (result) {
-                Toast.makeText(requireContext(), "File renamed successfully", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), "Renamed file successfully", Toast.LENGTH_SHORT).show();
             } else {
                 Toast.makeText(requireContext(), "Failed to rename file", Toast.LENGTH_SHORT).show();
             }
@@ -420,7 +442,6 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
                 String response = dataInputStream.readUTF();
                 if (response.equals("FILE_FOUND")) {
                     long fileSize = dataInputStream.readLong();
-//                    byte[] buffer = new byte[8096];
                     byte[] fileData = new byte[(int) fileSize];
                     int bytesRead;
                     int totalBytesRead = 0;
@@ -572,14 +593,7 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
     }
 
     private void uploadFile() {
-//        if (selectedFileUri != null) {
-//            Cursor cursor = requireContext().getContentResolver().query(selectedFileUri, null, null, null, null);
-//            if (cursor != null && cursor.moveToFirst()) {
-//                @SuppressLint("Range") String fileName = cursor.getString(cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME));
-//                cursor.close();
         new UploadFileTask().execute(getFileSize(selectedFileUri));
-//            }
-//        }
     }
 
     private class UploadFileTask extends AsyncTask<Long, Void, Boolean> {
@@ -652,6 +666,122 @@ public class FileListFragment extends Fragment implements FileListAdapter.OnFile
             }
         }
     }
+
+    private void showRenameFolderBox(FileModel folder) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        builder.setTitle("Rename Folder");
+
+        View viewInflated = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_rename_file, (ViewGroup) getView(), false);
+        final EditText input = viewInflated.findViewById(R.id.input);
+        input.setText(folder.getName());
+        builder.setView(viewInflated);
+
+        builder.setPositiveButton(android.R.string.ok, (dialog, which) -> {
+            String newName = input.getText().toString();
+            renameFolder(folder, newName);
+            dialog.dismiss();
+        });
+        builder.setNegativeButton(android.R.string.cancel, (dialog, which) -> dialog.cancel());
+        builder.show();
+    }
+
+    private void renameFolder(FileModel folder, String newName) {
+        new RenameFolderTask().execute(folder, newName);
+    }
+
+    private class RenameFolderTask extends AsyncTask<Object, Void, Boolean> {
+        @Override
+        protected Boolean doInBackground(Object... params) {
+            FileModel folder = (FileModel) params[0];
+            String newName = (String) params[1];
+            Socket socket = null;
+            DataInputStream dataInputStream = null;
+            DataOutputStream dataOutputStream = null;
+
+            try {
+                socket = new Socket(serverIP, serverPort);
+                dataInputStream = new DataInputStream(socket.getInputStream());
+                dataOutputStream = new DataOutputStream(socket.getOutputStream());
+
+                dataOutputStream.writeUTF("RENAME_DIR");
+                dataOutputStream.writeUTF(folder.getPath());
+                dataOutputStream.writeUTF(newName);
+                dataOutputStream.flush();
+
+                String response = dataInputStream.readUTF();
+                return response.equals("RENAME_SUCCESS");
+            } catch (IOException e) {
+                e.printStackTrace();
+                return false;
+            } finally {
+                try {
+                    if (socket != null) socket.close();
+                    if (dataInputStream != null) dataInputStream.close();
+                    if (dataOutputStream != null) dataOutputStream.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        @Override
+        protected void onPostExecute(Boolean result) {
+            if (result) {
+                Toast.makeText(getActivity(), "Renamed folder successfully", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(getActivity(), "Failed to rename folder", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+
+    private void deleteFolder(FileModel folder) {
+        new DeleteFolderTask().execute(folder);
+    }
+
+    private class DeleteFolderTask extends AsyncTask<FileModel, Void, Boolean> {
+        @Override
+        protected Boolean doInBackground(FileModel... params) {
+            FileModel folder = params[0];
+            Socket socket = null;
+            DataInputStream dataInputStream = null;
+            DataOutputStream dataOutputStream = null;
+
+            try {
+                socket = new Socket(serverIP, serverPort);
+                dataInputStream = new DataInputStream(socket.getInputStream());
+                dataOutputStream = new DataOutputStream(socket.getOutputStream());
+
+                dataOutputStream.writeUTF("DELETE_DIR");
+                dataOutputStream.writeUTF(folder.getPath());
+                dataOutputStream.flush();
+
+                String response = dataInputStream.readUTF();
+                return response.equals("DELETE_SUCCESS");
+            } catch (IOException e) {
+                e.printStackTrace();
+                return false;
+            } finally {
+                try {
+                    if (socket != null) socket.close();
+                    if (dataInputStream != null) dataInputStream.close();
+                    if (dataOutputStream != null) dataOutputStream.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        @Override
+        protected void onPostExecute(Boolean result) {
+            if (result) {
+                Toast.makeText(getActivity(), "Deleted folder successfully", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(getActivity(), "Failed to delete folder", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
 }
 
 //        private long previousTime;

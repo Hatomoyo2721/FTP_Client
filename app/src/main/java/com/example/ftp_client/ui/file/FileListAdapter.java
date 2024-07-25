@@ -20,15 +20,21 @@ public class FileListAdapter extends RecyclerView.Adapter<FileListAdapter.FileVi
     private List<FileModel> fileList;
     private Context context;
     private OnFileClickListener fileClickListener;
+    private OnFolderLongClickListener folderLongClickListener;
 
     public interface OnFileClickListener {
         void onFileClick(FileModel file);
     }
 
-    public FileListAdapter(Context context, List<FileModel> fileList, OnFileClickListener listener) {
+    public interface OnFolderLongClickListener {
+        void onFolderLongClick(FileModel file);
+    }
+
+    public FileListAdapter(Context context, List<FileModel> fileList, OnFileClickListener listener, OnFolderLongClickListener longClickListener) {
         this.context = context;
         this.fileList = fileList;
         this.fileClickListener = listener;
+        this.folderLongClickListener = longClickListener;
     }
 
     @NonNull
@@ -53,6 +59,10 @@ public class FileListAdapter extends RecyclerView.Adapter<FileListAdapter.FileVi
         holder.textViewFileName.setText(file.getName());
 
         holder.itemView.setOnClickListener(v -> fileClickListener.onFileClick(file));
+        holder.itemView.setOnLongClickListener(v -> {
+            folderLongClickListener.onFolderLongClick(file);
+            return true;
+        });
     }
 
     @Override
