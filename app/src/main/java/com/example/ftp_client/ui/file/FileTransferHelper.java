@@ -87,7 +87,6 @@ public class FileTransferHelper extends Fragment {
     }
 
 
-
     public void setConnectionDetails(String serverIP, int serverPort, String username, String password) {
         this.serverIP = serverIP;
         this.serverPort = serverPort;
@@ -231,40 +230,38 @@ public class FileTransferHelper extends Fragment {
     //===========================//
     /* Handle Server shut down */
     private void handleServerShutdown() {
-        if (isAdded()) {
-            runOnUiThread(() -> {
-                AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
-                builder.setTitle("Server Shutdown")
-                        .setMessage("Server has shutdown. Go back in 5 seconds.")
-                        .setCancelable(false)
-                        .setPositiveButton("Ok", (dialog, which) -> {
-                            dialog.dismiss();
-                            new Handler().postDelayed(() ->
-                                    requireActivity().getSupportFragmentManager().popBackStack(), 2000);
-                        });
+        runOnUiThread(() -> {
+            AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+            builder.setTitle("Server Shutdown")
+                    .setMessage("Server has shutdown. Go back in 5 seconds.")
+                    .setCancelable(false)
+                    .setPositiveButton("Ok", (dialog, which) -> {
+                        dialog.dismiss();
+                    });
 
-                serverShutdownDialog = builder.create();
-                serverShutdownDialog.show();
-                countdownHandler = new Handler();
-                countdownRunnable = new Runnable() {
-                    int secondsLeft = 5;
+            serverShutdownDialog = builder.create();
+            serverShutdownDialog.show();
+            countdownHandler = new Handler();
+            countdownRunnable = new Runnable() {
+                int secondsLeft = 5;
 
-                    @Override
-                    public void run() {
-                        if (secondsLeft > 0) {
-                            secondsLeft--;
-                            new Handler().postDelayed(this, 1000);
-                        } else {
-                            serverShutdownDialog.dismiss();
-                            countdownHandler.removeCallbacks(this);
-                            requireActivity().getSupportFragmentManager().popBackStack();
-                        }
+                @Override
+                public void run() {
+                    if (secondsLeft > 0) {
+                        secondsLeft--;
+                        new Handler().postDelayed(this, 1000);
+                    } else {
+                        serverShutdownDialog.dismiss();
+                        countdownHandler.removeCallbacks(this);
+                        requireActivity().getSupportFragmentManager().popBackStack();
                     }
-                };
-                countdownHandler.post(countdownRunnable);
-            });
-        }
+                }
+            };
+            countdownHandler.post(countdownRunnable);
+        });
+
     }
+
     private boolean isNetworkConnected() {
         ConnectivityManager cm = (ConnectivityManager) requireContext().getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
@@ -426,17 +423,15 @@ public class FileTransferHelper extends Fragment {
 
         @Override
         protected void onPostExecute(Boolean success) {
-            if (isAdded()) {
-                runOnUiThread(() -> {
-                    progressBarReload.setVisibility(View.GONE);
-                    if (success) {
-                        textViewStatus.setText("Server is running.");
-                    } else {
-                        textViewStatus.setText("Server has shut down.");
-                        handleServerShutdown();
-                    }
-                });
-            }
+            runOnUiThread(() -> {
+                progressBarReload.setVisibility(View.GONE);
+                if (success) {
+                    textViewStatus.setText("Server is running.");
+                } else {
+                    textViewStatus.setText("Server has shut down.");
+                    handleServerShutdown();
+                }
+            });
         }
     }
 

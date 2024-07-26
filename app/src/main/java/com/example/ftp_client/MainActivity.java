@@ -17,6 +17,8 @@ import com.example.ftp_client.ui.activity.HistoryActivity;
 import com.example.ftp_client.ui.connection.AddConnectionFragment;
 import com.example.ftp_client.ui.connection.ConnectionListFragment;
 import com.example.ftp_client.ui.connection.ConnectionModel;
+import com.example.ftp_client.ui.registration.LoginActivity;
+import com.google.android.gms.common.util.SharedPreferencesUtils;
 
 import java.util.Objects;
 
@@ -59,6 +61,9 @@ public class MainActivity extends AppCompatActivity implements AddConnectionFrag
             Intent intent = new Intent(this, HistoryActivity.class);
             startActivity(intent);
             return true;
+        } else if (item.getItemId() == R.id.action_logout) {
+            logout();
+            return true;
         }
         return super.onOptionsItemSelected(item);
     }
@@ -84,5 +89,13 @@ public class MainActivity extends AppCompatActivity implements AddConnectionFrag
         FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
         transaction.setCustomAnimations(enter, exit, popEnter, popExit);
         transaction.commit();
+    }
+
+    private void logout() {
+        // Redirect to login screen
+        Intent loginIntent = new Intent(MainActivity.this, LoginActivity.class);
+        loginIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(loginIntent);
+        finish();
     }
 }
